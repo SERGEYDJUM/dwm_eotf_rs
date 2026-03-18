@@ -3,6 +3,7 @@ name = "dwm_eotf_rs"
 version = "0.1.0"
 edition = "2024"
 build = "build.rs"
+license = "MIT"
 
 [dependencies]
 thiserror = "2.0.18"
