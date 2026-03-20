@@ -1,46 +1,19 @@
 use std::io::Write;
 use std::{ffi::c_void, fs};
 
-use bytemuck::{Pod, Zeroable, from_bytes};
+use bytemuck::checked::from_bytes;
 use tracing::debug;
-use winsafe::co::PROCESS;
+use winapi::um::memoryapi::VirtualProtectEx;
+use winsafe::co::{PAGE, PROCESS};
 use winsafe::{
     DisabPriv, HPROCESS, HPROCESSLIST, LUID_AND_ATTRIBUTES, LookupPrivilegeValue, SysResult,
     TOKEN_PRIVILEGES,
     co::{ERROR, SE_PRIV, SE_PRIV_ATTR, TH32CS, TOKEN},
 };
+use winsafe::{GetLastError, MEMORY_BASIC_INFORMATION};
 
-use crate::error::Result;
-
-pub static SHADER_HASHES: [[u8; 16]; 4] = [
-    [
-        0x96, 0xe6, 0xd1, 0x58, 0x92, 0x55, 0xec, 0xcd, 0x1d, 0xd7, 0xd4, 0xdb, 0xec, 0x54, 0xd2,
-        0x85,
-    ],
-    [
-        0x21, 0x26, 0xb0, 0x37, 0xc1, 0xa2, 0xfb, 0xdd, 0xe3, 0x55, 0xb6, 0xe6, 0xdd, 0x9c, 0xaf,
-        0x3c,
-    ],
-    [
-        0x2c, 0x89, 0x26, 0xff, 0xe2, 0x29, 0xf0, 0x5d, 0x96, 0x7c, 0x72, 0x66, 0x8d, 0xc3, 0xad,
-        0xdb,
-    ],
-    [
-        0xf6, 0x93, 0xbf, 0xbb, 0xaf, 0x24, 0xb3, 0xd9, 0x36, 0x63, 0x54, 0xbe, 0x88, 0x98, 0xa7,
-        0xf5,
-    ],
-];
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Zeroable, Pod)]
-pub struct DXContainerHeader {
-    pub magic: [u8; 4],
-    pub digest: [u8; 16],
-    pub major_version: u16,
-    pub minor_version: u16,
-    pub file_size: u32,
-    pub part_count: u32,
-}
+use crate::error::{Error, Result};
+use crate::shaders::DXContainerHeader;
 
 pub fn grant_debug_privileges() -> SysResult<()> {
     let htoken =
@@ -145,4 +118,44 @@ pub fn dump_shaders(bytes: &[u8]) -> Result<usize> {
     }
 
     Ok(shaders_dumped)
+}
+
+pub fn set_memprotect(
+    hprocess: &HPROCESS,
+    mbi: &MEMORY_BASIC_INFORMATION,
+    new_protect: PAGE,
+) -> Result<()> {
+    let old_protect = &mut 0;
+
+    let ret_stat = unsafe {
+        VirtualProtectEx(
+            hprocess.ptr(),
+            mbi.BaseAddress,
+            mbi.RegionSize,
+            new_protect.raw(),
+            old_protect,
+        )
+    };
+
+    match ret_stat {
+        0 => Err(Error::WinSafe(GetLastError())),
+        _ => Ok(()),
+    }
+}
+
+pub fn calculate_checksum(data: &[u8]) -> u128 {
+    unsafe extern "C" {
+        unsafe fn CalculateDXBCChecksum(
+            pData: *const u8,
+            dwSize: u32,
+            dwHash: &mut [u32; 4],
+        ) -> bool;
+    }
+
+    let mut digest = [0u32; 4];
+    unsafe {
+        CalculateDXBCChecksum(data.as_ptr(), data.len() as u32, &mut digest);
+    }
+    let digest: &[u8] = bytemuck::cast_slice(&digest);
+    *bytemuck::from_bytes(digest)
 }

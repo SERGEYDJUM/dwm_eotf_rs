@@ -1,24 +1,39 @@
 pub mod error;
+pub mod shaders;
 pub mod utils;
 
 use std::ffi::c_void;
 use std::iter::repeat_n;
 
-use ntapi::ntpsapi::{NtResumeProcess, NtSuspendProcess};
 use tracing::debug;
+
+use ntapi::ntpsapi::{NtResumeProcess, NtSuspendProcess};
 use winsafe::MEMORY_BASIC_INFORMATION;
 use winsafe::co::{MEM_STATE, PAGE};
 use winsafe::{HPROCESS, co::PROCESS, guard::CloseHandleGuard};
 
 use crate::error::{Error, Result};
+use crate::shaders::{DX_HEADER_SIZE, DXContainerHeader, DXContainerViewMut};
 use crate::utils::{
-    kill_process_by_name, pid_by_name, wait_module_by_name_and_pid, wait_pid_by_name,
+    kill_process_by_name, pid_by_name, set_memprotect, wait_module_by_name_and_pid,
+    wait_pid_by_name,
 };
 
 pub struct DwmProcess {
     hprocess: CloseHandleGuard<HPROCESS>,
-    dwmcore_addr: *mut c_void,
-    dwmcore_size: u32,
+
+    core_addr: *mut c_void,
+    core_size: u32,
+
+    page_infos: Vec<MEMORY_BASIC_INFORMATION>,
+    memory: Vec<u8>,
+}
+
+impl Drop for DwmProcess {
+    fn drop(&mut self) {
+        // If something goes horribly wrong
+        self.resume().unwrap();
+    }
 }
 
 const DWM_EXE: &str = "dwm.exe";
@@ -46,13 +61,15 @@ impl DwmProcess {
         Self::load(new_pid, DWM_DLL)
     }
 
-    pub fn load(pid: u32, name: &str) -> Result<Self> {
-        let (dwmcore_addr, dwmcore_size) = wait_module_by_name_and_pid(name, pid)?;
+    pub fn load(pid: u32, module_name: &str) -> Result<Self> {
+        let (dwmcore_addr, dwmcore_size) = wait_module_by_name_and_pid(module_name, pid)?;
 
         Ok(Self {
             hprocess: HPROCESS::OpenProcess(PROCESS::ALL_ACCESS, false, pid)?,
-            dwmcore_addr,
-            dwmcore_size,
+            core_addr: dwmcore_addr,
+            core_size: dwmcore_size,
+            page_infos: vec![],
+            memory: vec![],
         })
     }
 
@@ -60,7 +77,7 @@ impl DwmProcess {
         Ok(self.hprocess.TerminateProcess(0)?)
     }
 
-    pub fn suspend_process(&self) -> Result<()> {
+    pub fn suspend(&self) -> Result<()> {
         let ntstatus = unsafe { NtSuspendProcess(self.hprocess.ptr()) };
         if ntstatus != 0 {
             return Err(Error::NtApi(ntstatus));
@@ -68,7 +85,7 @@ impl DwmProcess {
         Ok(())
     }
 
-    pub fn resume_process(&self) -> Result<()> {
+    pub fn resume(&self) -> Result<()> {
         let ntstatus = unsafe { NtResumeProcess(self.hprocess.ptr()) };
         if ntstatus != 0 {
             return Err(Error::NtApi(ntstatus));
@@ -76,47 +93,100 @@ impl DwmProcess {
         Ok(())
     }
 
-    pub fn dwmcore_mempage_info(&self, addr: *mut c_void) -> Result<MEMORY_BASIC_INFORMATION> {
-        if addr as usize >= self.dwmcore_addr as usize + self.dwmcore_size as usize {
+    pub fn mempage_info(&self, addr: *mut c_void) -> Result<MEMORY_BASIC_INFORMATION> {
+        if addr as usize >= self.core_addr as usize + self.core_size as usize {
             return Err(Error::AddressBeyondModule);
         }
-
         Ok(self.hprocess.VirtualQueryEx(Some(addr))?)
     }
 
-    pub fn dwmcore_read_memory(&self) -> Result<Vec<u8>> {
-        let mut offset = 0;
-        let mut memory = vec![];
-        let mut good_pages = 0;
-        let mut bad_pages = 0;
+    pub fn read_ram(&mut self) -> Result<()> {
+        let mut mem_offset = 0;
 
-        while let Ok(mbi) = self.dwmcore_mempage_info(unsafe { self.dwmcore_addr.add(offset) }) {
+        while let Ok(mbi) = self.mempage_info(unsafe { self.core_addr.add(mem_offset) }) {
+            let region_size = mbi.RegionSize;
+
             if mbi.State == MEM_STATE::COMMIT && mbi.Protect == PAGE::READONLY {
-                if mbi.RegionSize < 4096 {
-                    debug!("Small page size: {}", mbi.RegionSize);
+                if region_size < 4096 {
+                    debug!("Small memory region detected: {}", region_size);
                 }
 
-                good_pages += 1;
-                let i = memory.len();
-
-                memory.extend(repeat_n(0, mbi.RegionSize));
+                let start = self.memory.len();
+                self.memory.extend(repeat_n(0, region_size));
+                let end = self.memory.len();
 
                 let bytes_read = self
                     .hprocess
-                    .ReadProcessMemory(mbi.BaseAddress, &mut memory[i..(i + mbi.RegionSize)])?;
+                    .ReadProcessMemory(mbi.BaseAddress, &mut self.memory[start..end])?;
 
-                if bytes_read != mbi.RegionSize {
-                    return Err(Error::PartialMemoryRead(bytes_read, mbi.RegionSize));
+                if bytes_read != region_size {
+                    return Err(Error::PartialMemoryRead(bytes_read, region_size));
                 }
-            } else {
-                bad_pages += 1;
+
+                self.page_infos.push(mbi);
             }
 
-            offset += mbi.RegionSize;
+            mem_offset += region_size;
         }
 
-        debug!("{} pages read, {} filtered out", good_pages, bad_pages);
+        Ok(())
+    }
 
-        Ok(memory)
+    pub fn view_memory(&self) -> &[u8] {
+        &self.memory
+    }
+
+    pub fn patch_shaders(&mut self) -> Result<()> {
+        let mut shaders_patched = 0;
+        let mut shader_count = 0;
+        let mut hstart = 0;
+
+        while hstart < self.memory.len() - DX_HEADER_SIZE {
+            if self.memory[hstart] == b'D'
+                && self.memory[hstart + 1] == b'X'
+                && self.memory[hstart + 2] == b'B'
+                && self.memory[hstart + 3] == b'C'
+            {
+                let header_end = hstart + DX_HEADER_SIZE;
+                let file_size = DXContainerHeader::from_bytes(&self.memory[hstart..header_end])
+                    .file_size as usize;
+                let file_end = hstart + file_size;
+
+                let mut shader = DXContainerViewMut {
+                    raw: &mut self.memory[hstart..file_end],
+                };
+
+                if shader.patch()? {
+                    shaders_patched += 1;
+                }
+
+                shader_count += 1;
+                hstart += file_size;
+            } else {
+                hstart += 1;
+            }
+        }
+
+        debug!(
+            "{} out of {} shaders were patched",
+            shaders_patched, shader_count
+        );
+
+        Ok(())
+    }
+
+    pub fn commit_to_ram(&self) -> Result<()> {
+        let mut mem_offset = 0;
+
+        for mbi in &self.page_infos {
+            let next_offset = mem_offset + mbi.RegionSize;
+            set_memprotect(&self.hprocess, mbi, PAGE::READWRITE)?;
+            self.hprocess
+                .WriteProcessMemory(mbi.BaseAddress, &self.memory[mem_offset..next_offset])?;
+            set_memprotect(&self.hprocess, mbi, mbi.Protect)?;
+            mem_offset = next_offset;
+        }
+
+        Ok(())
     }
 }
