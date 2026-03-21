@@ -1,6 +1,7 @@
-use thiserror::Error;
 use winapi::shared::ntdef::NTSTATUS;
 use winsafe::co::ERROR;
+
+use thiserror::Error;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -20,4 +21,13 @@ pub enum Error {
 
     #[error(transparent)]
     FS(#[from] std::io::Error),
+
+    #[error("Replacements must mutch the size of original patterns")]
+    ReplLenChange,
+
+    #[error("Couldn't find `{0}` process")]
+    ProcessNotFound(String),
+
+    #[error("Couldn't find `{0}` module in process with PID {1}")]
+    ModuleNotFound(String, u32),
 }

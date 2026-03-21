@@ -1,6 +1,8 @@
 [package]
 name = "dwm_eotf_rs"
-version = "0.1.0"
+description = "Replaces piecewise sRGB EOTF in Windows DWM with gamma 2.2"
+authors = ["Sergey Dzhumageldiev"]
+version = "0.4.0"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
@@ -10,12 +12,16 @@ thiserror = "2.0.18"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["fmt"] }
 bytemuck = { version = "1.25.0", features = ["derive"] }
-winsafe = { version = "0.0.27", features = ["advapi", "kernel", "psapi"] }
+aho-corasick = "1.1.4"
 
+winsafe = { version = "0.0.27", features = ["advapi"] }
 winapi = { version = "0.3.9", features = ["memoryapi", "std"] }
 ntapi = "0.4.3"
-md5 = "0.8.0"
 
 [build-dependencies]
 winresource = "0.1.31"
 cc = "1.2.57"
+
+[profile.release]
+lto = "fat"
+opt-level = 3

@@ -1,5 +1,7 @@
-use dwm_eotf_rs::error::Result;
-use dwm_eotf_rs::{DwmProcess, utils::grant_debug_privileges};
+use dwm_eotf_rs::{TargetProcess, error::Result, patcher::Patcher, winapi::grant_debug_privileges};
+
+const DWM_EXE: &str = "dwm.exe";
+const DWM_DLL: &str = "dwmcore.dll";
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -8,12 +10,18 @@ fn main() -> Result<()> {
 
     grant_debug_privileges()?;
 
-    let mut dwm = DwmProcess::open_restarted()?;
-    
+    let patcher = Patcher::default();
+    let mut dwm = TargetProcess::open_restarted(DWM_EXE, DWM_DLL)?;
+
     dwm.suspend()?;
     dwm.read_ram()?;
-    dwm.patch_shaders()?;
-    dwm.commit_to_ram()?;
-    dwm.resume()?;
-    Ok(())
+
+    if dwm.patch_shaders(&patcher)? != 0 {
+        dwm.commit_to_ram()?;
+        dwm.resume()?;
+        Ok(())
+    } else {
+        dwm.resume()?;
+        std::process::exit(1)
+    }
 }
