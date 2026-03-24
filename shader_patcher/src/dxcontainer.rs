@@ -1,13 +1,9 @@
 use std::{fs, io::Write};
 
 use bytemuck::{Pod, Zeroable, cast_slice, checked, from_bytes};
-
 use tracing::{debug, info};
 
-use crate::{
-    error::Result,
-    patcher::{HardCodedPatcher, ShaderPatcher},
-};
+use crate::{BinaryPatcher, error::Result};
 
 unsafe extern "C" {
     unsafe fn CalculateDXBCChecksum(pData: *const u8, dwSize: u32, dwHash: &mut [u32; 4]) -> bool;
@@ -83,7 +79,7 @@ impl<'a> DXContainerViewMut<'a> {
         Some(stored_hash)
     }
 
-    pub fn patch<T: ShaderPatcher>(&mut self, patcher: &T) -> Result<bool> {
+    pub fn patch<T: BinaryPatcher>(&mut self, patcher: &T) -> Result<bool> {
         let checksum: u128 = self.get_stored_digest();
 
         if !patcher.patch(self.raw, checksum)? {
@@ -100,7 +96,11 @@ impl<'a> DXContainerViewMut<'a> {
     }
 }
 
-pub fn patch_recursive(raw: &mut [u8], patcher: &HardCodedPatcher, recurse: bool) -> Result<(usize, usize)> {
+pub fn patch_recursive<T: BinaryPatcher>(
+    raw: &mut [u8],
+    patcher: &T,
+    recurse: bool,
+) -> Result<(usize, usize)> {
     let mut shaders_patched = 0;
     let mut shaders_found = 0;
     let mut h_start = 0;

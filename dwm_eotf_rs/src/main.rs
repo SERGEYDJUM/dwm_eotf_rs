@@ -1,4 +1,8 @@
-use dwm_eotf_rs::{TargetProcess, error::Result, patcher::HardCodedPatcher, winapi::grant_debug_privileges};
+mod patcher;
+
+use shader_patcher::{ShaderPatcher, error::Result, winapi::grant_debug_privileges};
+
+use crate::patcher::HardCodedPatcher;
 
 const DWM_EXE: &str = "dwm.exe";
 const DWM_DLL: &str = "dwmcore.dll";
@@ -11,7 +15,7 @@ fn main() -> Result<()> {
     grant_debug_privileges()?;
 
     let patcher = HardCodedPatcher::default();
-    let mut dwm = TargetProcess::open_restarted(DWM_EXE, DWM_DLL)?;
+    let mut dwm = ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?;
 
     dwm.suspend()?;
     dwm.read_ram()?;

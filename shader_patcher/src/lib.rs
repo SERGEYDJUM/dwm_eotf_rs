@@ -1,6 +1,5 @@
 pub mod dxcontainer;
 pub mod error;
-pub mod patcher;
 pub mod winapi;
 
 use std::ffi::c_void;
@@ -15,30 +14,33 @@ use tracing::{debug, info, warn};
 
 use crate::dxcontainer::patch_recursive;
 use crate::error::{Error, Result};
-use crate::patcher::HardCodedPatcher;
 use crate::winapi::{
     kill_process_by_name, pid_by_name, set_memprotect, wait_module_by_name_and_pid,
     wait_pid_by_name,
 };
 
-pub struct TargetProcess {
+pub trait BinaryPatcher {
+    fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool>;
+}
+
+pub struct ShaderPatcher {
     hprocess: CloseHandleGuard<HPROCESS>,
 
-    core_addr: *mut c_void,
-    core_size: u32,
+    module_addr: *mut c_void,
+    module_size: u32,
 
     page_infos: Vec<MEMORY_BASIC_INFORMATION>,
     memory: Vec<u8>,
 }
 
-impl Drop for TargetProcess {
+impl Drop for ShaderPatcher {
     fn drop(&mut self) {
         // If something goes horribly wrong
         unsafe { NtResumeProcess(self.hprocess.ptr()) };
     }
 }
 
-impl TargetProcess {
+impl ShaderPatcher {
     pub fn open(exe: &str, module: &str) -> Result<Self> {
         let pid = pid_by_name(exe)?;
         Self::load(pid, module)
@@ -68,8 +70,8 @@ impl TargetProcess {
 
         Ok(Self {
             hprocess: HPROCESS::OpenProcess(PROCESS::ALL_ACCESS, false, pid)?,
-            core_addr: dwmcore_addr,
-            core_size: dwmcore_size,
+            module_addr: dwmcore_addr,
+            module_size: dwmcore_size,
             page_infos: vec![],
             memory: vec![],
         })
@@ -99,7 +101,7 @@ impl TargetProcess {
     }
 
     pub fn mempage_info(&self, addr: *mut c_void) -> Result<MEMORY_BASIC_INFORMATION> {
-        if addr as usize >= self.core_addr as usize + self.core_size as usize {
+        if addr as usize >= self.module_addr as usize + self.module_size as usize {
             return Err(Error::AddressBeyondModule);
         }
         Ok(self.hprocess.VirtualQueryEx(Some(addr))?)
@@ -110,7 +112,7 @@ impl TargetProcess {
 
         debug!("Reading process memory...");
 
-        while let Ok(mbi) = self.mempage_info(unsafe { self.core_addr.add(mem_offset) }) {
+        while let Ok(mbi) = self.mempage_info(unsafe { self.module_addr.add(mem_offset) }) {
             let region_size = mbi.RegionSize;
 
             if mbi.State == MEM_STATE::COMMIT && mbi.Protect == PAGE::READONLY {
@@ -143,7 +145,7 @@ impl TargetProcess {
         &self.memory
     }
 
-    pub fn patch_shaders(&mut self, patcher: &HardCodedPatcher) -> Result<usize> {
+    pub fn patch_shaders<T: BinaryPatcher>(&mut self, patcher: &T) -> Result<usize> {
         debug!("Patching shaders recursively...");
         let (found, patched) = patch_recursive(&mut self.memory, patcher, true)?;
         info!("{} out of {} shaders were patched", patched, found);

@@ -1,7 +1,9 @@
 use aho_corasick::{AhoCorasick, MatchKind};
 use bytemuck::cast_slice;
-
-use crate::error::{Error, Result};
+use shader_patcher::{
+    BinaryPatcher,
+    error::{Error, Result},
+};
 
 static ORIGINAL_PATTERNS: [[f32; 3]; 4] = [
     [2.4, 2.4, 2.4],
@@ -23,10 +25,6 @@ static HASH_WHITELIST: [u128; 4] = [
     0xdbadc38d66727c965df029e2ff26892c,
     0xf5a79888be546336d9b324afbbbf93f6,
 ];
-
-pub trait ShaderPatcher {
-    fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool>;
-}
 
 pub struct HardCodedPatcher {
     aho: AhoCorasick,
@@ -54,7 +52,7 @@ impl Default for HardCodedPatcher {
     }
 }
 
-impl ShaderPatcher for HardCodedPatcher {
+impl BinaryPatcher for HardCodedPatcher {
     fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool> {
         if !HASH_WHITELIST.contains(&checksum) {
             return Ok(false);

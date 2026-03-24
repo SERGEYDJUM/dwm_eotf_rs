@@ -1,0 +1,19 @@
+[package]
+name = "dwm_eotf_rs"
+authors = ["Sergey Dzhumageldiev"]
+version = "0.5.1"
+edition = "2024"
+build = "build.rs"
+license = "MIT"
+
+[dependencies]
+shader_patcher = { path = "../shader_patcher" }
+tracing = { workspace = true }
+bytemuck = { workspace = true }
+
+aho-corasick = "1.1.4"
+
+tracing-subscriber = { version = "0.3.23", features = ["fmt"] }
+
+[build-dependencies]
+winresource = "0.1.31"

@@ -53,14 +53,10 @@ version = "0.5.1"
 dependencies = [
  "aho-corasick",
  "bytemuck",
- "cc",
- "ntapi",
- "thiserror",
+ "shader_patcher",
  "tracing",
  "tracing-subscriber",
- "winapi",
  "winresource",
- "winsafe",
 ]
 
 [[package]]
@@ -184,6 +180,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "876ac351060d4f882bb1032b6369eb0aef79ad9df1ea8bc404874d8cc3d0cd98"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "shader_patcher"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "cc",
+ "ntapi",
+ "thiserror",
+ "tracing",
+ "winapi",
+ "winsafe",
 ]
 
 [[package]]
