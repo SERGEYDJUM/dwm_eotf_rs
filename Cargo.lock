@@ -49,7 +49,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "dwm_eotf_rs"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "aho-corasick",
  "bytemuck",

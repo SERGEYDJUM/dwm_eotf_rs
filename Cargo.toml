@@ -2,7 +2,7 @@
 name = "dwm_eotf_rs"
 description = "Replaces piecewise sRGB EOTF in Windows DWM with gamma 2.2"
 authors = ["Sergey Dzhumageldiev"]
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
