@@ -4,7 +4,10 @@ use bytemuck::{Pod, Zeroable, cast_slice, checked, from_bytes};
 
 use tracing::{debug, info};
 
-use crate::{error::Result, patcher::Patcher};
+use crate::{
+    error::Result,
+    patcher::{HardCodedPatcher, ShaderPatcher},
+};
 
 unsafe extern "C" {
     unsafe fn CalculateDXBCChecksum(pData: *const u8, dwSize: u32, dwHash: &mut [u32; 4]) -> bool;
@@ -53,8 +56,17 @@ impl<'a> DXContainerViewMut<'a> {
         &mut self.raw[DX_HEADER_SIZE..]
     }
 
+    pub fn get_stored_digest(&self) -> u128 {
+        let stored_digest = self.get_header().digest.to_owned();
+        *from_bytes(&stored_digest)
+    }
+
+    pub fn calculate_digest(&self) -> u128 {
+        calculate_checksum(self.raw)
+    }
+
     pub fn fix_checksum(&mut self) -> Option<u128> {
-        let hash = calculate_checksum(self.raw);
+        let hash = self.calculate_digest();
 
         let dxc_header = self.get_header_mut();
         let stored_digest = dxc_header.digest.to_owned();
@@ -71,8 +83,13 @@ impl<'a> DXContainerViewMut<'a> {
         Some(stored_hash)
     }
 
-    pub fn patch(&mut self, patcher: &Patcher) -> Result<bool> {
-        patcher.patch(self.raw)?;
+    pub fn patch<T: ShaderPatcher>(&mut self, patcher: &T) -> Result<bool> {
+        let checksum: u128 = self.get_stored_digest();
+
+        if !patcher.patch(self.raw, checksum)? {
+            debug!("Shader `{:x}` not in whitelist, skipped", checksum);
+            return Ok(false);
+        }
 
         if let Some(old_hash) = self.fix_checksum() {
             info!("Patched shader `{:x}`", old_hash);
@@ -83,7 +100,7 @@ impl<'a> DXContainerViewMut<'a> {
     }
 }
 
-pub fn patch_recursive(raw: &mut [u8], patcher: &Patcher, recurse: bool) -> Result<(usize, usize)> {
+pub fn patch_recursive(raw: &mut [u8], patcher: &HardCodedPatcher, recurse: bool) -> Result<(usize, usize)> {
     let mut shaders_patched = 0;
     let mut shaders_found = 0;
     let mut h_start = 0;
@@ -109,7 +126,7 @@ pub fn patch_recursive(raw: &mut [u8], patcher: &Patcher, recurse: bool) -> Resu
 
                     if sub_patched != 0 {
                         shader.fix_checksum();
-                        shaders_patched += sub_patched + 1;
+                        shaders_patched += sub_patched;
                     }
                 } else {
                     shaders_found += 1;

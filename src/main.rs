@@ -1,4 +1,4 @@
-use dwm_eotf_rs::{TargetProcess, error::Result, patcher::Patcher, winapi::grant_debug_privileges};
+use dwm_eotf_rs::{TargetProcess, error::Result, patcher::HardCodedPatcher, winapi::grant_debug_privileges};
 
 const DWM_EXE: &str = "dwm.exe";
 const DWM_DLL: &str = "dwmcore.dll";
@@ -10,7 +10,7 @@ fn main() -> Result<()> {
 
     grant_debug_privileges()?;
 
-    let patcher = Patcher::default();
+    let patcher = HardCodedPatcher::default();
     let mut dwm = TargetProcess::open_restarted(DWM_EXE, DWM_DLL)?;
 
     dwm.suspend()?;

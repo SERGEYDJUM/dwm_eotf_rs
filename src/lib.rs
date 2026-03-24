@@ -15,7 +15,7 @@ use tracing::{debug, info, warn};
 
 use crate::dxcontainer::patch_recursive;
 use crate::error::{Error, Result};
-use crate::patcher::Patcher;
+use crate::patcher::HardCodedPatcher;
 use crate::winapi::{
     kill_process_by_name, pid_by_name, set_memprotect, wait_module_by_name_and_pid,
     wait_pid_by_name,
@@ -143,7 +143,7 @@ impl TargetProcess {
         &self.memory
     }
 
-    pub fn patch_shaders(&mut self, patcher: &Patcher) -> Result<usize> {
+    pub fn patch_shaders(&mut self, patcher: &HardCodedPatcher) -> Result<usize> {
         debug!("Patching shaders recursively...");
         let (found, patched) = patch_recursive(&mut self.memory, patcher, true)?;
         info!("{} out of {} shaders were patched", patched, found);
