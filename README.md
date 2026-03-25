@@ -1,5 +1,5 @@
 # About
-This is an alternative implementation of the idea from the [dwm_eotf](https://github.com/ledoge/dwm_eotf). 
+This is an alternative implementation of the idea from the [dwm_eotf](https://github.com/ledoge/dwm_eotf) with additional features. 
 
 This version is more stable, as it does not require multiple tries for it to work (as far as I can tell).
 
