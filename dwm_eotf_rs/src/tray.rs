@@ -2,7 +2,10 @@ use core::mem::MaybeUninit;
 use std::sync::mpsc;
 use tracing::{info, warn};
 use trayicon::*;
-use winapi::um::winuser;
+use winapi::um::{
+    wincon::GetConsoleWindow,
+    winuser::{self, SW_HIDE, ShowWindow},
+};
 
 use crate::{kill_dwm, patch_dwm, patcher::HardCodedPatcher};
 
@@ -109,9 +112,18 @@ pub fn run_tray(gamma: Option<f32>) -> anyhow::Result<()> {
         })
     });
 
+    hide_cmd();
     run_message_loop();
 
     Ok(())
+}
+
+pub fn hide_cmd() {
+    let window = unsafe { GetConsoleWindow() };
+
+    if !window.is_null() {
+        unsafe { ShowWindow(window, SW_HIDE) };
+    }
 }
 
 fn build_menu(e: Event) -> MenuBuilder<Event> {

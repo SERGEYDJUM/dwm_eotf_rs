@@ -46,12 +46,12 @@ fn execute(args: Args) -> Result<()> {
     debug!("Granting debugging privileges...");
     grant_debug_privileges()?;
 
-    if args.tray_mode {
+    if !args.compatibility_mode {
         if args.restore {
             kill_dwm()?;
         }
 
-        let gamma = if args.patch_immidiately {
+        let gamma = if !args.skip_patching {
             Some(args.gamma)
         } else {
             None
