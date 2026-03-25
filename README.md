@@ -1,9 +1,5 @@
 # About
-<<<<<<< HEAD
 An alternative implementation of the same idea that is behind [dwm_eotf](https://github.com/ledoge/dwm_eotf). 
-=======
-This is an alternative implementation of the idea from the [dwm_eotf](https://github.com/ledoge/dwm_eotf) with additional features. 
->>>>>>> 40fd18074502c64d785902e08b5a9b5672a93a50
 
 This version is more reliable, as it does not require multiple tries for it to work (as far as I can tell). It also has additional features, such as system tray controls.
 
