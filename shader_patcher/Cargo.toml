@@ -10,9 +10,8 @@ license = "MIT"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
-
+winapi = { workspace = true, features = ["memoryapi", "std"] }
 winsafe = { version = "0.0.27", features = ["advapi"] }
-winapi = { version = "0.3.9", features = ["memoryapi", "std"] }
 ntapi = "0.4.3"
 
 [build-dependencies]

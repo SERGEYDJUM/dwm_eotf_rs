@@ -1,22 +1,13 @@
 use aho_corasick::{AhoCorasick, MatchKind};
-use bytemuck::cast_slice;
-use shader_patcher::{
-    BinaryPatcher,
-    error::{Error, Result},
-};
+use anyhow::{Result, anyhow};
+use bytemuck::{cast, cast_slice};
+use shader_patcher::{BinaryPatcher, error::Error};
 
-static ORIGINAL_PATTERNS: [[f32; 3]; 4] = [
-    [2.4, 2.4, 2.4],
-    [0.04045, 0.04045, 0.04045],
-    [0.055000, 0.055000, 0.055000],
-    [0.94786733, 0.94786733, 0.94786733],
-];
-
-static REPLACEMENT_PATTERNS: [[f32; 3]; 4] = [
-    [2.2, 2.2, 2.2],
-    [0.0, 0.0, 0.0],
-    [0.0, 0.0, 0.0],
-    [1.0, 1.0, 1.0],
+static ORIGINAL_PATTERNS: [[f32; 4]; 4] = [
+    [2.4, 2.4, 2.4, 0.0],
+    [0.04045, 0.04045, 0.04045, 0.0],
+    [0.055000, 0.055000, 0.055000, 0.0],
+    [0.94786733, 0.94786733, 0.94786733, 0.0],
 ];
 
 static HASH_WHITELIST: [u128; 4] = [
@@ -28,44 +19,46 @@ static HASH_WHITELIST: [u128; 4] = [
 
 pub struct HardCodedPatcher {
     aho: AhoCorasick,
-    repl: Vec<Vec<u8>>,
+    replacements: [[u8; 16]; 4],
 }
 
-impl Default for HardCodedPatcher {
-    fn default() -> Self {
-        let orig: Vec<Vec<u8>> = ORIGINAL_PATTERNS
-            .iter()
-            .map(|p| cast_slice(p).to_vec())
-            .collect();
+impl HardCodedPatcher {
+    pub fn from_gamma(gamma: f32) -> Result<Self> {
+        if gamma <= 0.0 {
+            return Err(anyhow!("Gamma must be greater than zero!"));
+        }
 
-        let repl: Vec<Vec<u8>> = REPLACEMENT_PATTERNS
-            .iter()
-            .map(|p| cast_slice(p).to_vec())
-            .collect();
+        let patterns: &[[u8; 16]] = cast_slice(&ORIGINAL_PATTERNS);
+
+        let replacements: [[u8; 16]; 4] = cast([
+            [gamma, gamma, gamma, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 1.0, 0.0],
+        ]);
 
         let aho = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
-            .build(&orig)
+            .build(patterns)
             .unwrap();
 
-        Self { aho, repl }
+        Ok(Self { aho, replacements })
     }
 }
 
 impl BinaryPatcher for HardCodedPatcher {
-    fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool> {
+    fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool, Error> {
         if !HASH_WHITELIST.contains(&checksum) {
             return Ok(false);
         }
 
-        let new_data = self.aho.replace_all_bytes(data, &self.repl);
+        let patched = self.aho.replace_all_bytes(data, &self.replacements);
 
-        if new_data.len() != data.len() {
-            return Err(Error::ReplLenChange);
+        if patched.len() == data.len() {
+            data.copy_from_slice(&patched);
+            Ok(true)
+        } else {
+            Err(Error::ReplLenChange)
         }
-
-        data.copy_from_slice(&new_data);
-
-        Ok(true)
     }
 }
