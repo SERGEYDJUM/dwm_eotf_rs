@@ -27,6 +27,7 @@ Options:
 ### Tray Mode
 You can toggle the patch using a system tray icon, as well as select between preset gamma values (2.0/2.2/2.4).
 
+|||
 |---------------------|---------------------|
 |![](.assets/ss22.png)|![](.assets/ss24.png)|
 
