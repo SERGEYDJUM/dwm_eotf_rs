@@ -1,9 +1,9 @@
 # About
-This is an alternative implementation of the idea from the [dwm_eotf](https://github.com/ledoge/dwm_eotf). 
+An alternative implementation of the same idea that is behind [dwm_eotf](https://github.com/ledoge/dwm_eotf). 
 
-This version is more stable, as it does not require multiple tries for it to work (as far as I can tell).
+This version is more reliable, as it does not require multiple tries for it to work (as far as I can tell). It also has additional features, such as system tray controls.
 
-It works by patching memory of the loaded `dwmcore.dll` module containing shaders that are responsible for incorrect SDR to HDR conversions.
+`dwm_eotf_rs` works by reading memory of the loaded `dwmcore.dll` module, patching shaders that are responsible for incorrect SDR to HDR conversions there and writing it back.
 
 # Usage
 
@@ -27,8 +27,13 @@ Options:
 ### Tray Mode
 You can toggle the patch using a system tray icon, as well as select between preset gamma values (2.0/2.2/2.4).
 
+|---------------------|---------------------|
+|![](.assets/ss22.png)|![](.assets/ss24.png)|
+
 ### Compatibility Mode
 Patches DWM and exits.
+
+![](.assets/sst.png)
 
 ## Library
 
