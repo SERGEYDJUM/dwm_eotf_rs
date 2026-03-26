@@ -14,11 +14,12 @@ Patches DWM's shaders to use proper EOTF (gamma)
 Usage: dwm_eotf_rs.exe [OPTIONS] [GAMMA]
 
 Arguments:
-  [GAMMA]  Gamma for compatibility mode [default: 2.2]
+  [GAMMA]  Gamma value (primary option in both modes) [default: 2.2]
 
 Options:
   -c, --compatibility-mode  The app will patch DWM and exit immidiately
   -s, --skip-patching       The tray mode will not patch DWM at the start
+  -i, --ignore-whitelist    Shader whitelist will not be used
   -r, --restore             Restores original EOTF by restarting the DWM
   -h, --help                Print help
   -V, --version             Print version
@@ -29,12 +30,12 @@ You can toggle the patch using a system tray icon, as well as select gamma value
 
 |||
 |---------------------|---------------------|
-|![](.assets/ss22.png)|![](.assets/ss24.png)|
+|![](.assets/on.png)|![](.assets/off.png)|
 
 ### Compatibility Mode
 Patches DWM and exits.
 
-![](.assets/sst.png)
+![](.assets/compat.png)
 
 ## Library
 

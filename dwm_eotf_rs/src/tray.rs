@@ -37,7 +37,7 @@ pub fn run_tray(args: &Args) -> Result<()> {
     let gamma24_patcher = SimplePatcher::new(aho.clone(), 2.4, args.ignore_whitelist)?;
     let custom_patcher = SimplePatcher::new(aho, args.gamma, args.ignore_whitelist)?;
 
-    let icon_off = Icon::from_buffer(ICON_ON, None, None)?;
+    let icon_off = Icon::from_buffer(ICON_OFF, None, None)?;
     let icon_on = Icon::from_buffer(ICON_ON, None, None)?;
 
     let custom_gamma = match args.gamma {
