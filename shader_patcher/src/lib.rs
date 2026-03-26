@@ -4,6 +4,7 @@ pub mod winapi;
 
 use std::ffi::c_void;
 use std::iter::repeat_n;
+use std::path::Path;
 
 use ntapi::ntpsapi::{NtResumeProcess, NtSuspendProcess};
 use winsafe::MEMORY_BASIC_INFORMATION;
@@ -12,7 +13,7 @@ use winsafe::{HPROCESS, co::PROCESS, guard::CloseHandleGuard};
 
 use tracing::{debug, info, warn};
 
-use crate::dxcontainer::patch_recursive;
+use crate::dxcontainer::{dump_shaders, patch_recursive};
 use crate::error::{Error, Result};
 use crate::winapi::{
     kill_process_by_name, pid_by_name, set_memprotect, wait_module_by_name_and_pid,
@@ -167,5 +168,26 @@ impl ShaderPatcher {
         }
 
         Ok(())
+    }
+
+    pub fn execute_patching<T: BinaryPatcher>(&mut self, patcher: &T) -> Result<usize> {
+        self.suspend()?;
+        self.read_ram()?;
+        let n_patched = self.patch_shaders(patcher)?;
+
+        if n_patched != 0 {
+            self.commit_to_ram()?;
+        }
+
+        self.resume()?;
+        Ok(n_patched)
+    }
+
+    pub fn execute_shader_dump(&mut self, path: &Path, only_big: bool) -> Result<usize> {
+        self.suspend()?;
+        self.read_ram()?;
+        let n_shaders = dump_shaders(&self.memory, only_big, path)?;
+        self.resume()?;
+        Ok(n_shaders)
     }
 }

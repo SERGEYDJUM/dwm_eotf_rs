@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "dwm_eotf_rs"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -1148,7 +1148,7 @@ dependencies = [
 
 [[package]]
 name = "shader_patcher"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "cc",

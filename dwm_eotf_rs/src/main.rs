@@ -22,32 +22,30 @@ use crate::{
 const DWM_EXE: &str = "dwm.exe";
 const DWM_DLL: &str = "dwmcore.dll";
 
-fn patch_dwm(patcher: &SimplePatcher) -> Result<()> {
-    let mut dwm = ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?;
+fn main() {
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
 
-    dwm.suspend()?;
-    dwm.read_ram()?;
-
-    if dwm.patch_shaders(patcher)? != 0 {
-        dwm.commit_to_ram()?;
-        dwm.resume()?;
-        Ok(())
-    } else {
-        dwm.resume()?;
-        Err(anyhow!("No shaders were patched!"))
+    if let Err(err) = execute(Args::parse()) {
+        error!("{}", err);
+        exit(1);
     }
-}
-
-fn kill_dwm() -> Result<()> {
-    let pid = kill_process_by_name(DWM_EXE)?;
-    info!("Killed `{}` process with PID {}", DWM_EXE, pid);
-    Ok(())
 }
 
 fn execute(args: Args) -> Result<()> {
     debug!("{:?}", args);
     debug!("Granting debugging privileges...");
     grant_debug_privileges()?;
+
+    if args.dump_shaders {
+        return dump_shaders(&args);
+    }
 
     if !args.compatibility_mode {
         return run_tray(&args);
@@ -64,18 +62,28 @@ fn execute(args: Args) -> Result<()> {
     )?)
 }
 
-fn main() {
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .init();
-
-    if let Err(err) = execute(Args::parse()) {
-        error!("{}", err);
-        exit(1);
+fn patch_dwm(patcher: &SimplePatcher) -> Result<()> {
+    if ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?.execute_patching(patcher)? == 0 {
+        return Err(anyhow!("No shaders were patched!"));
     }
+    Ok(())
+}
+
+fn dump_shaders(args: &Args) -> Result<()> {
+    info!(
+        "Dumping shaders to `{}`...",
+        args.output_dir.to_string_lossy()
+    );
+
+    let n_shaders = ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?
+        .execute_shader_dump(&args.output_dir, args.big_shaders)?;
+
+    info!("{} shaders were dumped", n_shaders);
+    Ok(())
+}
+
+fn kill_dwm() -> Result<()> {
+    let pid = kill_process_by_name(DWM_EXE)?;
+    info!("Killed `{}` process with PID {}", DWM_EXE, pid);
+    Ok(())
 }

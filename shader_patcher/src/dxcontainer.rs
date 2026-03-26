@@ -1,4 +1,4 @@
-use std::{fs, io::Write};
+use std::{fs, io::Write, path::Path};
 
 use bytemuck::{Pod, Zeroable, cast_slice, checked, from_bytes};
 use tracing::{debug, info};
@@ -150,8 +150,8 @@ pub fn patch_recursive<T: BinaryPatcher>(
     Ok((shaders_found, shaders_patched))
 }
 
-pub fn dump_shaders(bytes: &[u8], only_big: bool) -> Result<usize> {
-    fs::create_dir_all("shaders/dumped")?;
+pub fn dump_shaders(bytes: &[u8], only_big: bool, dir: &Path) -> Result<usize> {
+    fs::create_dir_all(dir)?;
 
     let mut shaders_dumped = 0;
     let mut i = 0;
@@ -169,11 +169,10 @@ pub fn dump_shaders(bytes: &[u8], only_big: bool) -> Result<usize> {
             let header_size = DX_HEADER_SIZE;
             let header: &DXContainerHeader = from_bytes(&bytes[i..(i + header_size)]);
             let file_size = header.file_size as usize;
-
             let hash: u128 = *from_bytes(&header.digest.clone());
-            info!("Dumping shader with hash `{:032x}`", &hash);
 
-            fs::File::create(format!("shaders/dumped/{:032x}.dxbc", hash))?
+            info!("Dumping shader with hash `{:032x}`", &hash);
+            fs::File::create(dir.join(format!("{:032x}.dxbc", hash)))?
                 .write_all(&bytes[i..(i + file_size)])?;
 
             shaders_dumped += 1;

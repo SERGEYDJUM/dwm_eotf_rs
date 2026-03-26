@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -22,4 +24,16 @@ pub struct Args {
     /// Gamma value (primary option in both modes)
     #[arg(default_value_t = 2.2)]
     pub gamma: f32,
+
+    /// Dumps DWM's original shaders as DXBC and exits
+    #[arg(short, long)]
+    pub dump_shaders: bool,
+
+    /// Prevents recursive dumping of sub-shaders
+    #[arg(long)]
+    pub big_shaders: bool,
+
+    /// Target directory for dumped DXBC files
+    #[arg(long, default_value = "shaders/dumped")]
+    pub output_dir: PathBuf,
 }
