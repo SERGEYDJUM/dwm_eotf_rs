@@ -2,7 +2,7 @@
 name = "dwm_eotf_rs"
 authors = ["Sergey Dzhumageldiev"]
 description = "Patches DWM's shaders to use proper EOTF (gamma)"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
