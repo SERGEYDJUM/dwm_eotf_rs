@@ -17,18 +17,17 @@ static HASH_WHITELIST: [u128; 4] = [
     0xf5a79888be546336d9b324afbbbf93f6,
 ];
 
-pub struct HardCodedPatcher {
+pub struct SimplePatcher {
     aho: AhoCorasick,
     replacements: [[u8; 16]; 4],
+    ignore_whitelist: bool,
 }
 
-impl HardCodedPatcher {
-    pub fn from_gamma(gamma: f32) -> Result<Self> {
+impl SimplePatcher {
+    pub fn new(aho: AhoCorasick, gamma: f32, ignore_whitelist: bool) -> Result<Self> {
         if gamma <= 0.0 {
             return Err(anyhow!("Gamma must be greater than zero!"));
         }
-
-        let patterns: &[[u8; 16]] = cast_slice(&ORIGINAL_PATTERNS);
 
         let replacements: [[u8; 16]; 4] = cast([
             [gamma, gamma, gamma, 0.0],
@@ -37,18 +36,17 @@ impl HardCodedPatcher {
             [1.0, 1.0, 1.0, 0.0],
         ]);
 
-        let aho = AhoCorasick::builder()
-            .match_kind(MatchKind::LeftmostLongest)
-            .build(patterns)
-            .unwrap();
-
-        Ok(Self { aho, replacements })
+        Ok(Self {
+            aho,
+            replacements,
+            ignore_whitelist,
+        })
     }
 }
 
-impl BinaryPatcher for HardCodedPatcher {
+impl BinaryPatcher for SimplePatcher {
     fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool, Error> {
-        if !HASH_WHITELIST.contains(&checksum) {
+        if !self.ignore_whitelist && !HASH_WHITELIST.contains(&checksum) {
             return Ok(false);
         }
 
@@ -61,4 +59,12 @@ impl BinaryPatcher for HardCodedPatcher {
             Err(Error::ReplLenChange)
         }
     }
+}
+
+pub fn build_aho_corasick() -> Result<AhoCorasick> {
+    let patterns: &[[u8; 16]] = cast_slice(&ORIGINAL_PATTERNS);
+
+    Ok(AhoCorasick::builder()
+        .match_kind(MatchKind::LeftmostLongest)
+        .build(patterns)?)
 }

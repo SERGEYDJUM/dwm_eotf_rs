@@ -13,12 +13,16 @@ use shader_patcher::{
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
-use crate::{args::Args, patcher::HardCodedPatcher, tray::run_tray};
+use crate::{
+    args::Args,
+    patcher::{SimplePatcher, build_aho_corasick},
+    tray::run_tray,
+};
 
 const DWM_EXE: &str = "dwm.exe";
 const DWM_DLL: &str = "dwmcore.dll";
 
-fn patch_dwm(patcher: &HardCodedPatcher) -> Result<()> {
+fn patch_dwm(patcher: &SimplePatcher) -> Result<()> {
     let mut dwm = ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?;
 
     dwm.suspend()?;
@@ -42,29 +46,22 @@ fn kill_dwm() -> Result<()> {
 
 fn execute(args: Args) -> Result<()> {
     debug!("{:?}", args);
-
     debug!("Granting debugging privileges...");
     grant_debug_privileges()?;
 
     if !args.compatibility_mode {
-        if args.restore {
-            kill_dwm()?;
-        }
-
-        let gamma = if !args.skip_patching {
-            Some(args.gamma)
-        } else {
-            None
-        };
-
-        return run_tray(gamma);
+        return run_tray(&args);
     }
 
     if args.restore {
         return kill_dwm();
     }
 
-    patch_dwm(&HardCodedPatcher::from_gamma(args.gamma)?)
+    patch_dwm(&SimplePatcher::new(
+        build_aho_corasick()?,
+        args.gamma,
+        args.ignore_whitelist,
+    )?)
 }
 
 fn main() {

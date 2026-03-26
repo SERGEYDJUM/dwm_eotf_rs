@@ -83,12 +83,12 @@ impl<'a> DXContainerViewMut<'a> {
         let checksum: u128 = self.get_stored_digest();
 
         if !patcher.patch(self.raw, checksum)? {
-            debug!("Shader `{:x}` not in whitelist, skipped", checksum);
+            debug!("Shader `{:032x}` not in whitelist, skipped", checksum);
             return Ok(false);
         }
 
         if let Some(old_hash) = self.fix_checksum() {
-            info!("Patched shader `{:x}`", old_hash);
+            info!("Patched shader `{:032x}`", old_hash);
             Ok(true)
         } else {
             Ok(false)
@@ -171,9 +171,9 @@ pub fn dump_shaders(bytes: &[u8], only_big: bool) -> Result<usize> {
             let file_size = header.file_size as usize;
 
             let hash: u128 = *from_bytes(&header.digest.clone());
-            info!("Dumping shader with hash `{:X}`", &hash);
+            info!("Dumping shader with hash `{:032x}`", &hash);
 
-            fs::File::create(format!("shaders/dumped/{:X}.dxbc", hash))?
+            fs::File::create(format!("shaders/dumped/{:032x}.dxbc", hash))?
                 .write_all(&bytes[i..(i + file_size)])?;
 
             shaders_dumped += 1;

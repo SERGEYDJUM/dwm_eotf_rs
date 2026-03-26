@@ -11,11 +11,15 @@ pub struct Args {
     #[arg(short, long)]
     pub skip_patching: bool,
 
+    /// Shader whitelist will not be used
+    #[arg(short, long)]
+    pub ignore_whitelist: bool,
+
     /// Restores original EOTF by restarting the DWM
     #[arg(short, long)]
     pub restore: bool,
 
-    /// Gamma for compatibility mode
+    /// Gamma value (primary option in both modes)
     #[arg(default_value_t = 2.2)]
     pub gamma: f32,
 }
