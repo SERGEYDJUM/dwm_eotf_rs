@@ -53,7 +53,7 @@ By default, `dwm_eotf_rs` will patch only 4 shaders selected by ledoge. I think 
 dwm_eotf_rs depends on `shader_patcher` library from this repository that can be used to implement patching of other apps.
 
 # Known Issues
-- Chromium-based apps (Web browsers, VS Code, etc) also use incorrect curves and will switch back and forth between original and fixed look sometimes.
+- Chromium-based apps (Web browsers, VS Code, etc) also use incorrect curves and will switch back and forth between original and fixed look sometimes. Setting `force-color-profile` to `hdr10` will help somewhat.
 
 # Acknowledgements
 - Many thanks to [ledoge](https://github.com/ledoge) for original C implementation.
