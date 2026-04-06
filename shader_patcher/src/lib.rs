@@ -6,7 +6,7 @@ use std::ffi::c_void;
 use std::iter::repeat_n;
 use std::path::Path;
 
-use ntapi::ntpsapi::{NtResumeProcess, NtSuspendProcess};
+use windows::Win32::System::Memory::PAGE_READWRITE;
 use winsafe::MEMORY_BASIC_INFORMATION;
 use winsafe::co::{MEM_STATE, PAGE};
 use winsafe::{HPROCESS, co::PROCESS, guard::CloseHandleGuard};
@@ -16,8 +16,8 @@ use tracing::{debug, info, warn};
 use crate::dxcontainer::{dump_shaders, patch_recursive};
 use crate::error::{Error, Result};
 use crate::winapi::{
-    kill_process_by_name, pid_by_name, set_memprotect, wait_module_by_name_and_pid,
-    wait_pid_by_name,
+    kill_process_by_name, pid_by_name, resume_process, set_memprotect, suspend_process,
+    wait_module_by_name_and_pid, wait_pid_by_name,
 };
 
 pub trait BinaryPatcher {
@@ -37,7 +37,7 @@ pub struct ShaderPatcher {
 impl Drop for ShaderPatcher {
     fn drop(&mut self) {
         // If something goes horribly wrong
-        unsafe { NtResumeProcess(self.hprocess.ptr()) };
+        resume_process(&self.hprocess).ok();
     }
 }
 
@@ -85,20 +85,12 @@ impl ShaderPatcher {
 
     pub fn suspend(&self) -> Result<()> {
         debug!("Suspending process...");
-        let ntstatus = unsafe { NtSuspendProcess(self.hprocess.ptr()) };
-        if ntstatus != 0 {
-            return Err(Error::NtApi(ntstatus));
-        }
-        Ok(())
+        suspend_process(&self.hprocess)
     }
 
     pub fn resume(&self) -> Result<()> {
         debug!("Resuming process...");
-        let ntstatus = unsafe { NtResumeProcess(self.hprocess.ptr()) };
-        if ntstatus != 0 {
-            return Err(Error::NtApi(ntstatus));
-        }
-        Ok(())
+        resume_process(&self.hprocess)
     }
 
     pub fn mempage_info(&self, addr: *mut c_void) -> Result<MEMORY_BASIC_INFORMATION> {
@@ -160,7 +152,7 @@ impl ShaderPatcher {
 
         for mbi in &self.page_infos {
             let next_offset = mem_offset + mbi.RegionSize;
-            let old_protect = set_memprotect(&self.hprocess, mbi, PAGE::READWRITE)?;
+            let old_protect = set_memprotect(&self.hprocess, mbi, PAGE_READWRITE)?;
             self.hprocess
                 .WriteProcessMemory(mbi.BaseAddress, &self.memory[mem_offset..next_offset])?;
             set_memprotect(&self.hprocess, mbi, old_protect)?;

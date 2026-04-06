@@ -8,7 +8,7 @@ use anyhow::{Result, anyhow};
 use clap::Parser;
 use shader_patcher::{
     ShaderPatcher,
-    winapi::{grant_debug_privileges, kill_process_by_name},
+    winapi::{obtain_debug_privileges, kill_process_by_name},
 };
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
@@ -40,8 +40,8 @@ fn main() {
 
 fn execute(args: Args) -> Result<()> {
     debug!("{:?}", args);
-    debug!("Granting debugging privileges...");
-    grant_debug_privileges()?;
+    debug!("Obtaining debugging privileges...");
+    obtain_debug_privileges()?;
 
     if args.dump_shaders {
         return dump_shaders(&args);
