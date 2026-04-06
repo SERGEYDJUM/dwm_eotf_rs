@@ -10,8 +10,8 @@ license = "MIT"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
+windows = { workspace = true, features = ["Win32_System_Memory"] }
 winsafe = { version = "0.0.27", features = ["advapi"] }
-windows = { version = "0.62.2", features = ["Win32_System_Memory"] }
 
 [build-dependencies]
 cc = "1.2.59"

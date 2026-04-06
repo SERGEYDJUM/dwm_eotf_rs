@@ -8,7 +8,7 @@ use anyhow::{Result, anyhow};
 use clap::Parser;
 use shader_patcher::{
     ShaderPatcher,
-    winapi::{obtain_debug_privileges, kill_process_by_name},
+    winapi::{kill_process_by_name, obtain_debug_privileges},
 };
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};

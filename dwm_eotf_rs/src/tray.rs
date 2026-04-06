@@ -1,11 +1,12 @@
 use anyhow::Result;
-use core::mem::MaybeUninit;
-use std::sync::mpsc;
+use std::{ptr::null_mut, sync::mpsc};
 use tracing::{debug, info};
 use trayicon::*;
-use winapi::um::{
-    wincon::GetConsoleWindow,
-    winuser::{self, SW_HIDE, ShowWindow},
+use windows::Win32::{
+    System::Console::GetConsoleWindow,
+    UI::WindowsAndMessaging::{
+        DispatchMessageA, GetMessageA, SW_HIDE, ShowWindow, TranslateMessage,
+    },
 };
 
 use crate::{
@@ -30,6 +31,8 @@ enum Event {
 }
 
 pub fn run_tray(args: &Args) -> Result<()> {
+    hide_cmd();
+
     let aho = build_aho_corasick()?;
 
     let gamma20_patcher = SimplePatcher::new(aho.clone(), 2.0, args.ignore_whitelist)?;
@@ -124,7 +127,6 @@ pub fn run_tray(args: &Args) -> Result<()> {
         })
     });
 
-    hide_cmd();
     run_message_loop();
 
     Ok(())
@@ -153,24 +155,18 @@ fn build_menu(e: Event, custom_gamma: Option<f32>) -> MenuBuilder<Event> {
 }
 
 pub fn hide_cmd() {
-    let window = unsafe { GetConsoleWindow() };
-
-    if !window.is_null() {
-        unsafe { ShowWindow(window, SW_HIDE) };
+    unsafe {
+        let _ = ShowWindow(GetConsoleWindow(), SW_HIDE);
     }
 }
 
 fn run_message_loop() {
-    loop {
-        let mut msg = MaybeUninit::uninit();
+    let lpmsg = null_mut();
 
-        unsafe {
-            if winuser::GetMessageA(msg.as_mut_ptr(), 0 as _, 0, 0) > 0 {
-                winuser::TranslateMessage(msg.as_ptr());
-                winuser::DispatchMessageA(msg.as_ptr());
-            } else {
-                break;
-            }
+    unsafe {
+        while GetMessageA(lpmsg, None, 0, 0).0 > 0 {
+            let _ = TranslateMessage(lpmsg);
+            DispatchMessageA(lpmsg);
         }
     }
 }

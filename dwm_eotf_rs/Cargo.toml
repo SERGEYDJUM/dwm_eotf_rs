@@ -2,17 +2,16 @@
 name = "dwm_eotf_rs"
 authors = ["Sergey Dzhumageldiev"]
 description = "Patches DWM's shaders to use proper EOTF (gamma)"
-version = "0.9.1"
+version = "0.9.2"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
 
 [dependencies]
 shader_patcher = { path = "../shader_patcher" }
-
 tracing = { workspace = true }
 bytemuck = { workspace = true }
-winapi = { workspace = true, features = ["winuser", "wincon"] }
+windows = { workspace = true, features = ["Win32_System_Console", "Win32_UI_WindowsAndMessaging"] }
 
 aho-corasick = "1.1.4"
 

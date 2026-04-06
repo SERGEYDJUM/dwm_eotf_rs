@@ -6,7 +6,7 @@ members = ["shader_patcher", "dwm_eotf_rs"]
 bytemuck = "1.25.0"
 tracing = "0.1.44"
 thiserror = "2.0.18"
-winapi = "0.3.9"
+windows = "0.62.2"
 
 [profile.release]
 lto = "fat"
