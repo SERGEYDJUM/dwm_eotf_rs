@@ -67,12 +67,12 @@ impl ShaderPatcher {
     }
 
     pub fn load(pid: u32, module_name: &str) -> Result<Self> {
-        let (dwmcore_addr, dwmcore_size) = wait_module_by_name_and_pid(module_name, pid)?;
+        let (module_addr, module_size) = wait_module_by_name_and_pid(module_name, pid)?;
 
         Ok(Self {
             hprocess: HPROCESS::OpenProcess(PROCESS::ALL_ACCESS, false, pid)?,
-            module_addr: dwmcore_addr,
-            module_size: dwmcore_size,
+            module_addr,
+            module_size,
             page_infos: vec![],
             memory: vec![],
         })

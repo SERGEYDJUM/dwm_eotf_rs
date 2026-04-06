@@ -4,11 +4,9 @@ unsafe extern "system" {
     pub unsafe fn NtResumeProcess(ProcessHandle: *mut std::ffi::c_void) -> std::ffi::c_long;
 }
 
-use std::{ffi::c_void, ptr::null_mut};
-
 use windows::Win32::{
     Foundation::HANDLE,
-    System::Memory::{PAGE_PROTECTION_FLAGS, VirtualProtectEx},
+    System::Memory::{PAGE_PROTECTION_FLAGS, PAGE_READONLY, VirtualProtectEx},
 };
 use winsafe::{
     DisabPriv, HPROCESS, HPROCESSLIST, LUID_AND_ATTRIBUTES, LookupPrivilegeValue,
@@ -71,7 +69,7 @@ pub fn kill_process_by_name(name: &str) -> Result<u32> {
     Ok(pid)
 }
 
-pub fn wait_module_by_name_and_pid(name: &str, pid: u32) -> Result<(*mut c_void, u32)> {
+pub fn wait_module_by_name_and_pid(name: &str, pid: u32) -> Result<(*mut std::ffi::c_void, u32)> {
     loop {
         match module_by_name_and_pid(name, pid) {
             Ok(r) => return Ok(r),
@@ -80,7 +78,7 @@ pub fn wait_module_by_name_and_pid(name: &str, pid: u32) -> Result<(*mut c_void,
     }
 }
 
-pub fn module_by_name_and_pid(name: &str, pid: u32) -> Result<(*mut c_void, u32)> {
+pub fn module_by_name_and_pid(name: &str, pid: u32) -> Result<(*mut std::ffi::c_void, u32)> {
     let mut snap = HPROCESSLIST::CreateToolhelp32Snapshot(TH32CS::SNAPMODULE, Some(pid))?;
     for mm in snap.iter_modules() {
         if let Ok(m) = mm
@@ -98,7 +96,7 @@ pub fn set_memprotect(
     mbi: &MEMORY_BASIC_INFORMATION,
     new_protect: PAGE_PROTECTION_FLAGS,
 ) -> Result<PAGE_PROTECTION_FLAGS> {
-    let old_protect = null_mut();
+    let mut old_protect = PAGE_READONLY;
 
     unsafe {
         VirtualProtectEx(
@@ -106,9 +104,9 @@ pub fn set_memprotect(
             mbi.BaseAddress,
             mbi.RegionSize,
             new_protect,
-            old_protect,
+            &mut old_protect,
         )
     }?;
 
-    Ok(unsafe { *old_protect })
+    Ok(old_protect)
 }
