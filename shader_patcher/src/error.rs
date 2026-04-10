@@ -1,15 +1,12 @@
-use thiserror::Error;
-use winsafe::co::ERROR;
-
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Windows(#[from] windows::core::Error),
 
     #[error(transparent)]
-    WinSafe(#[from] ERROR),
+    WinSafe(#[from] winsafe::co::ERROR),
 
     #[error("NT API errored with NTSTATUS: {0}")]
     NtApi(std::ffi::c_long),

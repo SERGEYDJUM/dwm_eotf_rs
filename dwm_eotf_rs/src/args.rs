@@ -1,29 +1,25 @@
-use std::path::PathBuf;
-
-use clap::Parser;
-
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    /// The app will patch DWM and exit immidiately
+    /// Exponent to use during EOTF patching
+    #[arg(default_value_t = 2.2)]
+    pub gamma: f32,
+
+    /// Patches DWM and exits (disables tray icon)
     #[arg(short, long)]
     pub compatibility_mode: bool,
 
-    /// The tray mode will not patch DWM at the start
+    /// Prevents automatic patching on app start (only if tray icon is enabled)
     #[arg(short, long)]
     pub skip_patching: bool,
 
-    /// Shader whitelist will not be used
+    /// Patch every shader with matching patterns
     #[arg(short, long)]
     pub ignore_whitelist: bool,
 
-    /// Restores original EOTF by restarting the DWM
+    /// Restores original sRGB EOTF (by restarting DWM) and exits
     #[arg(short, long)]
     pub restore: bool,
-
-    /// Gamma value (primary option in both modes)
-    #[arg(default_value_t = 2.2)]
-    pub gamma: f32,
 
     /// Dumps DWM's original shaders as DXBC and exits
     #[arg(short, long)]
@@ -35,5 +31,5 @@ pub struct Args {
 
     /// Target directory for dumped DXBC files
     #[arg(long, default_value = "shaders/dumped")]
-    pub output_dir: PathBuf,
+    pub output_dir: std::path::PathBuf,
 }

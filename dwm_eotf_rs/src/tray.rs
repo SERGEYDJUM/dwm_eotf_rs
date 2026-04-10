@@ -1,16 +1,10 @@
 use anyhow::Result;
-use std::{ptr::null_mut, sync::mpsc};
-use tracing::{debug, info};
+use std::{mem::MaybeUninit, sync::mpsc};
+use tracing::{debug, error, info};
 use trayicon::*;
-use windows::Win32::{
-    System::Console::GetConsoleWindow,
-    UI::WindowsAndMessaging::{
-        DispatchMessageA, GetMessageA, SW_HIDE, ShowWindow, TranslateMessage,
-    },
-};
+use windows::Win32::UI::WindowsAndMessaging::{DispatchMessageA, GetMessageA, TranslateMessage};
 
 use crate::{
-    args::Args,
     kill_dwm, patch_dwm,
     patcher::{SimplePatcher, build_aho_corasick},
 };
@@ -30,22 +24,20 @@ enum Event {
     Exit,
 }
 
-pub fn run_tray(args: &Args) -> Result<()> {
-    hide_cmd();
-
+pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> Result<()> {
     let aho = build_aho_corasick()?;
 
-    let gamma20_patcher = SimplePatcher::new(aho.clone(), 2.0, args.ignore_whitelist)?;
-    let gamma22_patcher = SimplePatcher::new(aho.clone(), 2.2, args.ignore_whitelist)?;
-    let gamma24_patcher = SimplePatcher::new(aho.clone(), 2.4, args.ignore_whitelist)?;
-    let custom_patcher = SimplePatcher::new(aho, args.gamma, args.ignore_whitelist)?;
+    let gamma20_patcher = SimplePatcher::new(aho.clone(), 2.0, ignore_whitelist)?;
+    let gamma22_patcher = SimplePatcher::new(aho.clone(), 2.2, ignore_whitelist)?;
+    let gamma24_patcher = SimplePatcher::new(aho.clone(), 2.4, ignore_whitelist)?;
+    let custom_patcher = SimplePatcher::new(aho, gamma, ignore_whitelist)?;
 
     let icon_off = Icon::from_buffer(ICON_OFF, None, None)?;
     let icon_on = Icon::from_buffer(ICON_ON, None, None)?;
 
-    let custom_gamma = match args.gamma {
+    let custom_gamma = match gamma {
         2.0 | 2.2 | 2.4 => None,
-        _ => Some(args.gamma),
+        _ => Some(gamma),
     };
 
     let mut initial_mode = Event::SetSRGB;
@@ -53,8 +45,10 @@ pub fn run_tray(args: &Args) -> Result<()> {
 
     info!("Launching in Tray Mode...");
 
-    if !args.skip_patching {
-        match args.gamma {
+    if !skip_patching {
+        info!("Patching DWM to use gamma {:.3}", gamma);
+
+        match gamma {
             2.0 => {
                 patch_dwm(&gamma20_patcher)?;
                 initial_mode = Event::SetG20;
@@ -98,23 +92,27 @@ pub fn run_tray(args: &Args) -> Result<()> {
                 tray_icon.set_icon(icon).unwrap();
             };
 
-            let patcher = match m {
-                Event::SetG20 => &gamma20_patcher,
-                Event::SetG22 => &gamma22_patcher,
-                Event::SetG24 => &gamma24_patcher,
-                _ => &custom_patcher,
+            let (patcher, gamma_v) = match m {
+                Event::SetG20 => (&gamma20_patcher, 2.0),
+                Event::SetG22 => (&gamma22_patcher, 2.2),
+                Event::SetG24 => (&gamma24_patcher, 2.4),
+                _ => (&custom_patcher, gamma),
             };
 
             match m {
                 Event::SetSRGB => {
                     info!("Restoring DWM EOTF...");
-                    kill_dwm().unwrap();
-                    update_tray(&icon_off);
+                    match kill_dwm() {
+                        Ok(_) => update_tray(&icon_off),
+                        Err(e) => error!("{}", e),
+                    }
                 }
                 Event::SetG20 | Event::SetG22 | Event::SetG24 | Event::SetGCustom => {
-                    info!("Patching DWM...");
-                    patch_dwm(patcher).unwrap();
-                    update_tray(&icon_on);
+                    info!("Patching DWM EOTF to use gamma {:.3}...", gamma_v);
+                    match patch_dwm(patcher) {
+                        Ok(_) => update_tray(&icon_on),
+                        Err(e) => error!("{}", e),
+                    }
                 }
                 Event::RightClick | Event::LeftClick => {
                     tray_icon.show_menu().unwrap();
@@ -127,9 +125,7 @@ pub fn run_tray(args: &Args) -> Result<()> {
         })
     });
 
-    run_message_loop();
-
-    Ok(())
+    win_main()
 }
 
 fn build_menu(e: Event, custom_gamma: Option<f32>) -> MenuBuilder<Event> {
@@ -154,19 +150,15 @@ fn build_menu(e: Event, custom_gamma: Option<f32>) -> MenuBuilder<Event> {
         .item("Exit", Event::Exit)
 }
 
-pub fn hide_cmd() {
-    unsafe {
-        let _ = ShowWindow(GetConsoleWindow(), SW_HIDE);
-    }
-}
-
-fn run_message_loop() {
-    let lpmsg = null_mut();
+fn win_main() -> Result<()> {
+    let mut lpmsg = MaybeUninit::uninit();
 
     unsafe {
-        while GetMessageA(lpmsg, None, 0, 0).0 > 0 {
-            let _ = TranslateMessage(lpmsg);
-            DispatchMessageA(lpmsg);
+        while GetMessageA(lpmsg.as_mut_ptr(), None, 0, 0).0 > 0 {
+            let _ = TranslateMessage(lpmsg.as_ptr());
+            DispatchMessageA(lpmsg.as_ptr());
         }
     }
+
+    Ok(())
 }
