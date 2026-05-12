@@ -65,15 +65,16 @@ fn execute(args: Args) -> Result<()> {
         return Ok(());
     }
 
+    if !args.compatibility_mode {
+        return run_in_tray(args.gamma, args.skip_patching, args.ignore_whitelist);
+    }
+
+    // Only compatibility/dump/restore modes need debug privileges upfront
     debug!("Obtaining debugging privileges...");
     obtain_debug_privileges()?;
 
     if args.dump_shaders {
         return dump_shaders(&args.output_dir, args.big_shaders);
-    }
-
-    if !args.compatibility_mode {
-        return run_in_tray(args.gamma, args.skip_patching, args.ignore_whitelist);
     }
 
     if args.restore {

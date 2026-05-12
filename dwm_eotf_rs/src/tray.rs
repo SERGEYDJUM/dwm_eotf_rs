@@ -1,4 +1,5 @@
 use anyhow::Result;
+use shader_patcher::winapi::obtain_debug_privileges;
 use std::{mem::MaybeUninit, sync::mpsc};
 use tracing::{debug, error, info};
 use trayicon::*;
@@ -27,6 +28,8 @@ enum Event {
 }
 
 pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> Result<()> {
+    obtain_debug_privileges()?;
+
     let aho = build_aho_corasick()?;
 
     let gamma20_patcher = SimplePatcher::new(aho.clone(), 2.0, ignore_whitelist)?;
@@ -42,37 +45,15 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
         _ => Some(gamma),
     };
 
-    let mut initial_mode = Event::SetSRGB;
-    let mut initial_icon = ICON_OFF;
+    let initial_mode = Event::SetSRGB;
+    let initial_icon = ICON_OFF;
 
     info!("Launching in Tray Mode...");
 
-    if !skip_patching {
-        info!("Patching DWM to use gamma {:.3}", gamma);
-
-        match gamma {
-            2.0 => {
-                patch_dwm(&gamma20_patcher)?;
-                initial_mode = Event::SetG20;
-            }
-            2.2 => {
-                patch_dwm(&gamma22_patcher)?;
-                initial_mode = Event::SetG22;
-            }
-            2.4 => {
-                patch_dwm(&gamma24_patcher)?;
-                initial_mode = Event::SetG24;
-            }
-            _ => {
-                patch_dwm(&custom_patcher)?;
-                initial_mode = Event::SetGCustom;
-            }
-        }
-
-        initial_icon = ICON_ON;
-    }
-
     let (tx, rx) = mpsc::channel::<Event>();
+
+    // Clone tx before it gets moved into the tray builder's sender closure
+    let tx_init = tx.clone();
 
     let startup_registered = startup::is_registered();
 
@@ -86,6 +67,20 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
         .on_click(Event::LeftClick)
         .menu(build_menu(initial_mode, custom_gamma, startup_registered))
         .build()?;
+
+    // Spawn a deferred thread to send the initial patch event after DWM has time to start
+    if !skip_patching {
+        let init_event = match gamma {
+            2.0 => Event::SetG20,
+            2.2 => Event::SetG22,
+            2.4 => Event::SetG24,
+            _ => Event::SetGCustom,
+        };
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            tx_init.send(init_event).ok();
+        });
+    }
 
     std::thread::spawn(move || {
         // Track the current gamma mode and startup state so we can update them
@@ -112,6 +107,10 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
             match m {
                 Event::SetSRGB => {
                     info!("Restoring DWM EOTF...");
+                    if let Err(e) = obtain_debug_privileges() {
+                        error!("Failed to obtain debug privileges: {}", e);
+                        return;
+                    }
                     match kill_dwm() {
                         Ok(_) => {
                             current_mode = m;
@@ -122,6 +121,10 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
                 }
                 Event::SetG20 | Event::SetG22 | Event::SetG24 | Event::SetGCustom => {
                     info!("Patching DWM EOTF to use gamma {:.3}...", gamma_v);
+                    if let Err(e) = obtain_debug_privileges() {
+                        error!("Failed to obtain debug privileges: {}", e);
+                        return;
+                    }
                     match patch_dwm(patcher) {
                         Ok(_) => {
                             current_mode = m;

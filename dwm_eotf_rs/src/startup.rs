@@ -1,52 +1,91 @@
-use anyhow::{Context, Result};
-use winreg::enums::*;
-use winreg::RegKey;
+use anyhow::{Context, Result, anyhow};
+use std::process::Command;
 
-const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
-const VALUE_NAME: &str = "dwm_eotf_rs";
+const TASK_NAME: &str = "dwm_eotf_rs";
 
-/// Registers the app to run on Windows startup with the given gamma value.
+/// Registers the app to run on Windows startup via Task Scheduler with highest
+/// privileges (admin elevation). Uses `schtasks.exe` to create a task that
+/// triggers at user logon.
 ///
-/// Writes to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` with the
-/// current executable path and gamma argument. The exe path is quoted to
-/// handle paths containing spaces.
+/// The task runs with the `HIGHEST` run level so that `obtain_debug_privileges()`
+/// succeeds without a UAC prompt at boot.
 pub fn register_startup(gamma: f32) -> Result<()> {
     let exe_path = std::env::current_exe().context("Failed to get current executable path")?;
     let command = format!("\"{}\" {:.3}", exe_path.display(), gamma);
 
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let (run_key, _) = hkcu
-        .create_subkey(RUN_KEY)
-        .context("Failed to open/create Run registry key")?;
+    let output = Command::new("schtasks")
+        .args([
+            "/Create",
+            "/TN",
+            TASK_NAME,
+            "/TR",
+            &command,
+            "/SC",
+            "ONLOGON",
+            "/RL",
+            "HIGHEST",
+            "/F", // force overwrite if already exists
+        ])
+        .output()
+        .context("Failed to run schtasks.exe")?;
 
-    run_key
-        .set_value(VALUE_NAME, &command)
-        .context("Failed to write startup registry value")?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!("schtasks /Create failed: {}", stderr.trim()));
+    }
+
+    // Clean up any legacy registry Run key from older versions
+    let _ = cleanup_legacy_registry();
 
     Ok(())
 }
 
-/// Removes the app from Windows startup by deleting its registry value.
+/// Removes the app from Windows startup by deleting its scheduled task.
 ///
-/// Silently succeeds if the value does not exist.
+/// Silently succeeds if the task does not exist.
 pub fn unregister_startup() -> Result<()> {
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let output = Command::new("schtasks")
+        .args(["/Delete", "/TN", TASK_NAME, "/F"])
+        .output()
+        .context("Failed to run schtasks.exe")?;
 
-    if let Ok(run_key) = hkcu.open_subkey_with_flags(RUN_KEY, KEY_WRITE) {
-        // delete_value returns an error if the value doesn't exist; ignore it
-        let _ = run_key.delete_value(VALUE_NAME);
+    // Ignore "task does not exist" errors
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // schtasks returns non-zero if the task doesn't exist — that's fine
+        if !stderr.contains("does not exist") && !stderr.contains("not found") {
+            return Err(anyhow!("schtasks /Delete failed: {}", stderr.trim()));
+        }
     }
+
+    // Clean up any legacy registry Run key from older versions
+    let _ = cleanup_legacy_registry();
 
     Ok(())
 }
 
 /// Checks whether the app is currently registered for Windows startup.
 pub fn is_registered() -> bool {
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    Command::new("schtasks")
+        .args(["/Query", "/TN", TASK_NAME])
+        .output()
+        .is_ok_and(|o| o.status.success())
+}
 
-    let Ok(run_key) = hkcu.open_subkey_with_flags(RUN_KEY, KEY_READ) else {
-        return false;
-    };
+/// Removes the legacy `HKCU\...\Run` registry entry left by older versions.
+fn cleanup_legacy_registry() -> Result<()> {
+    let output = Command::new("reg")
+        .args([
+            "delete",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+            "/v",
+            TASK_NAME,
+            "/f",
+        ])
+        .output()
+        .context("Failed to run reg.exe")?;
 
-    run_key.get_value::<String, _>(VALUE_NAME).is_ok()
+    // Ignore errors — the key might not exist
+    let _ = output;
+    Ok(())
 }
