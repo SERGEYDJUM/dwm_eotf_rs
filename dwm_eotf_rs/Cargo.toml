@@ -19,6 +19,7 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 clap = { version = "4.6.0", features = ["derive"] }
 anyhow = "1.0.102"
 trayicon = "0.4.0"
+winreg = "0.55"
 
 [build-dependencies]
 winresource = "0.1.31"

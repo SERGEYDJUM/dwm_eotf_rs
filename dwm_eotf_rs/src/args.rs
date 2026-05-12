@@ -32,4 +32,12 @@ pub struct Args {
     /// Target directory for dumped DXBC files
     #[arg(long, default_value = "shaders/dumped")]
     pub output_dir: std::path::PathBuf,
+
+    /// Registers the app to run on Windows startup and exits
+    #[arg(long)]
+    pub startup: bool,
+
+    /// Removes the app from Windows startup and exits
+    #[arg(long)]
+    pub no_startup: bool,
 }

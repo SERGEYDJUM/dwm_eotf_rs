@@ -52,6 +52,23 @@ By default, `dwm_eotf_rs` will patch only 4 shaders selected by ledoge. I think 
 
 dwm_eotf_rs depends on `shader_patcher` library from this repository that can be used to implement patching of other apps.
 
+## Startup
+
+`dwm_eotf_rs` can register itself to run automatically when Windows starts, using the Windows registry autorun key (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value name `dwm_eotf_rs`).
+
+### CLI Flags
+
+| Flag | Description |
+|------|-------------|
+| `--startup` | Registers the app to run on Windows startup using the current gamma value and exits. Example: `dwm_eotf_rs.exe --startup 2.4` registers startup with gamma 2.4. |
+| `--no-startup` | Removes the app from Windows startup and exits. |
+
+The registered command always launches in **tray mode** (no `-c` flag is included), so the app will start silently in the system tray.
+
+### Tray Menu Toggle
+
+The system tray context menu includes a **"Run on startup"** checkable item. Clicking it toggles the startup registration on or off. If the gamma value is changed while startup is registered, the registration is automatically updated to use the new gamma.
+
 # Known Issues
 - Chromium-based apps (Web browsers, VS Code, etc) also use incorrect curves and will switch back and forth between original and fixed look sometimes. Setting `force-color-profile` to `hdr10` will help somewhat.
 
