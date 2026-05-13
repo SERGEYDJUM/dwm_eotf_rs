@@ -77,7 +77,7 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
             _ => Event::SetGCustom,
         };
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(5));
+            std::thread::sleep(std::time::Duration::from_secs(2));
             tx_init.send(init_event).ok();
         });
     }
