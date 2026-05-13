@@ -27,6 +27,7 @@ pub fn register_startup(gamma: f32) -> Result<()> {
     let exe_path = std::env::current_exe().context("Failed to get current executable path")?;
     let exe_str = exe_path.display().to_string();
 
+<<<<<<< HEAD
     let task_path = task_path();
 
     // Build a PowerShell script that mirrors the proven pattern:
@@ -53,6 +54,13 @@ Register-ScheduledTask -TaskName '{name}' -TaskPath '{path}' -Action $action -Tr
 
     let output = Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &ps_script])
+=======
+    let output = Command::new("schtasks")
+        .args([
+            "/Create", "/TN", TASK_NAME, "/TR", &command, "/SC", "ONLOGON", "/RL", "HIGHEST",
+            "/F", // force overwrite if already exists
+        ])
+>>>>>>> 5e745ec6aad350e46f14575e47942bb6020fceb3
         .output()
         .context("Failed to run PowerShell for task registration")?;
 

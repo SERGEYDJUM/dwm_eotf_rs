@@ -55,7 +55,10 @@ fn execute(args: Args) -> Result<()> {
     // Handle startup registration flags first (no debug privileges needed)
     if args.startup {
         startup::register_startup(args.gamma)?;
-        info!("Registered for Windows startup with gamma {:.3}", args.gamma);
+        info!(
+            "Registered for Windows startup with gamma {:.3}",
+            args.gamma
+        );
         return Ok(());
     }
 
@@ -82,10 +85,10 @@ fn execute(args: Args) -> Result<()> {
     }
 
     patch_dwm(&SimplePatcher::new(
-        build_aho_corasick()?,
+        &build_aho_corasick()?,
         args.gamma,
         args.ignore_whitelist,
-    )?)
+    ))
 }
 
 fn hide_cmd() {
