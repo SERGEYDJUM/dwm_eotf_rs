@@ -15,15 +15,7 @@ pub fn register_startup(gamma: f32) -> Result<()> {
 
     let output = Command::new("schtasks")
         .args([
-            "/Create",
-            "/TN",
-            TASK_NAME,
-            "/TR",
-            &command,
-            "/SC",
-            "ONLOGON",
-            "/RL",
-            "HIGHEST",
+            "/Create", "/TN", TASK_NAME, "/TR", &command, "/SC", "ONLOGON", "/RL", "HIGHEST",
             "/F", // force overwrite if already exists
         ])
         .output()
