@@ -17,11 +17,12 @@ Arguments:
   [GAMMA]  Exponent to use during EOTF patching [default: 2.2]
 
 Options:
-  -c, --compatibility-mode       Patches DWM and exits (disables tray icon)
-  -s, --skip-patching            Prevents automatic patching on app start (only if tray icon is enabled)
+  -c, --compatibility-mode       Patches DWM and exits (disables tray mode)
+  -s, --skip-patching            Prevents automatic patching on app start (tray mode)
+  -w, --wait-time <WAIT_TIME>    Delay (in seconds) before automatic patching on app start (tray mode) [default: 5]
   -i, --ignore-whitelist         Patch every shader with matching patterns
   -r, --restore                  Restores original sRGB EOTF (by restarting DWM) and exits
-  -d, --dump-shaders             Dumps DWM's original shaders as DXBC and exits
+      --dump-shaders             Dumps DWM's original shaders as DXBC and exits
       --big-shaders              Prevents recursive dumping of sub-shaders
       --output-dir <OUTPUT_DIR>  Target directory for dumped DXBC files [default: shaders/dumped]
       --startup                  Registers the app to run on Windows startup and exits
