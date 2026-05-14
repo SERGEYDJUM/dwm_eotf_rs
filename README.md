@@ -24,6 +24,8 @@ Options:
   -d, --dump-shaders             Dumps DWM's original shaders as DXBC and exits
       --big-shaders              Prevents recursive dumping of sub-shaders
       --output-dir <OUTPUT_DIR>  Target directory for dumped DXBC files [default: shaders/dumped]
+      --startup                  Registers the app to run on Windows startup and exits
+      --no-startup               Removes the app from Windows startup and exits
   -h, --help                     Print help
   -V, --version                  Print version
 ```
@@ -34,6 +36,12 @@ It's possible to toggle the patch using a system tray icon, as well as select ga
 |||
 |---------------------|---------------------|
 |![](.assets/on.png)|![](.assets/off.png)|
+
+### Startup
+
+`dwm_eotf_rs` can register itself to run automatically in **tray mode** when Windows starts, using the Windows registry autorun key (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value name `dwm_eotf_rs`).
+
+The system tray context menu includes a **"Run on startup"** checkable item. Clicking it toggles the startup registration on or off. If the gamma value is changed while startup is registered, the registration is automatically updated to use the new gamma.
 
 ### Compatibility Mode
 This mode turns `dwm_eotf_rs` into a simple console app - it patches DWM and exits.

@@ -1,7 +1,8 @@
 use aho_corasick::{AhoCorasick, MatchKind};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use bytemuck::{cast, cast_slice};
 use shader_patcher::{BinaryPatcher, error::Error};
+use tracing::warn;
 
 static ORIGINAL_PATTERNS: [[f32; 4]; 4] = [
     [2.4, 2.4, 2.4, 0.0],
@@ -17,16 +18,17 @@ static HASH_WHITELIST: [u128; 4] = [
     0xf5a79888be546336d9b324afbbbf93f6,
 ];
 
-pub struct SimplePatcher {
-    aho: AhoCorasick,
+pub struct SimplePatcher<'a> {
+    aho: &'a AhoCorasick,
     replacements: [[u8; 16]; 4],
     ignore_whitelist: bool,
 }
 
-impl SimplePatcher {
-    pub fn new(aho: AhoCorasick, gamma: f32, ignore_whitelist: bool) -> Result<Self> {
+impl<'a> SimplePatcher<'a> {
+    pub fn new(aho: &'a AhoCorasick, mut gamma: f32, ignore_whitelist: bool) -> Self {
         if gamma <= 0.0 {
-            return Err(anyhow!("Gamma must be greater than zero!"));
+            warn!("Gamma must be positive, defaulting to 2.2!");
+            gamma = 2.2;
         }
 
         let replacements: [[u8; 16]; 4] = cast([
@@ -36,15 +38,15 @@ impl SimplePatcher {
             [1.0, 1.0, 1.0, 0.0],
         ]);
 
-        Ok(Self {
+        Self {
             aho,
             replacements,
             ignore_whitelist,
-        })
+        }
     }
 }
 
-impl BinaryPatcher for SimplePatcher {
+impl<'a> BinaryPatcher for SimplePatcher<'a> {
     fn patch(&self, data: &mut [u8], checksum: u128) -> Result<bool, Error> {
         if !self.ignore_whitelist && !HASH_WHITELIST.contains(&checksum) {
             return Ok(false);

@@ -1,5 +1,6 @@
 mod args;
 mod patcher;
+mod startup;
 mod tray;
 
 use std::{path::Path, process::exit};
@@ -51,15 +52,36 @@ fn main() {
 }
 
 fn execute(args: Args) -> Result<()> {
+    // Handle startup registration flags first (no debug privileges needed)
+    if args.startup {
+        startup::register_startup(args.gamma)?;
+        info!(
+            "Registered for Windows startup with gamma {:.3}",
+            args.gamma
+        );
+        return Ok(());
+    }
+
+    if args.no_startup {
+        startup::unregister_startup()?;
+        info!("Removed from Windows startup");
+        return Ok(());
+    }
+
     debug!("Obtaining debugging privileges...");
     obtain_debug_privileges()?;
 
-    if args.dump_shaders {
-        return dump_shaders(&args.output_dir, args.big_shaders);
+    if !args.compatibility_mode {
+        return run_in_tray(
+            args.gamma,
+            args.wait_time,
+            args.skip_patching,
+            args.ignore_whitelist,
+        );
     }
 
-    if !args.compatibility_mode {
-        return run_in_tray(args.gamma, args.skip_patching, args.ignore_whitelist);
+    if args.dump_shaders {
+        return dump_shaders(&args.output_dir, args.big_shaders);
     }
 
     if args.restore {
@@ -67,10 +89,10 @@ fn execute(args: Args) -> Result<()> {
     }
 
     patch_dwm(&SimplePatcher::new(
-        build_aho_corasick()?,
+        &build_aho_corasick()?,
         args.gamma,
         args.ignore_whitelist,
-    )?)
+    ))
 }
 
 fn hide_cmd() {

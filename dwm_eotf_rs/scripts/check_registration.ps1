@@ -1,0 +1,1 @@
+Get-ScheduledTask -TaskName dwm_eotf_rs -ErrorAction SilentlyContinue
