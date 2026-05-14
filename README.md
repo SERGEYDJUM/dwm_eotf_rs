@@ -39,7 +39,7 @@ It's possible to toggle the patch using a system tray icon, as well as select ga
 
 ### Startup
 
-`dwm_eotf_rs` can register itself to run automatically in **tray mode** when Windows starts, using the Windows registry autorun key (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value name `dwm_eotf_rs`).
+`dwm_eotf_rs` can register itself to run automatically in **tray mode** when Windows starts, using the Windows Task Scheduler (task named `dwm_eotf_rs`).
 
 The system tray context menu includes a **"Run on startup"** checkable item. Clicking it toggles the startup registration on or off. If the gamma value is changed while startup is registered, the registration is automatically updated to use the new gamma.
 
