@@ -5,7 +5,7 @@ mod tray;
 
 use std::{path::Path, process::exit};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Ok, Result, anyhow};
 use clap::Parser as _;
 use shader_patcher::{
     ShaderPatcher,
@@ -19,8 +19,9 @@ use windows::Win32::{
 };
 
 use crate::{
-    args::Args,
+    args::{Args, Commands},
     patcher::{SimplePatcher, build_aho_corasick},
+    startup::{register_startup, unregister_startup},
     tray::run_in_tray,
 };
 
@@ -39,60 +40,42 @@ fn main() {
 
     let args = Args::parse();
 
-    if !args.compatibility_mode {
-        hide_cmd();
-    }
-
     debug!("{:?}", args);
 
-    if let Err(err) = execute(args) {
+    if let Err(err) = execute(&args) {
         error!("{}", err);
         exit(1);
     }
 }
 
-fn execute(args: Args) -> Result<()> {
-    // Handle startup registration flags first (no debug privileges needed)
-    if args.startup {
-        startup::register_startup(args.gamma)?;
-        info!(
-            "Registered for Windows startup with gamma {:.3}",
-            args.gamma
-        );
-        return Ok(());
+fn execute(args: &Args) -> Result<()> {
+    if let Some(cmd) = &args.command {
+        return match cmd {
+            Commands::Restore => kill_dwm(),
+            Commands::Schedule => register_startup(args.gamma),
+            Commands::Unschedule => unregister_startup(),
+            Commands::Dump {
+                big_shaders,
+                output_dir,
+            } => dump_shaders(&output_dir, *big_shaders),
+        };
     }
 
-    if args.no_startup {
-        startup::unregister_startup()?;
-        info!("Removed from Windows startup");
-        return Ok(());
-    }
-
-    debug!("Obtaining debugging privileges...");
-    obtain_debug_privileges()?;
-
-    if !args.compatibility_mode {
-        return run_in_tray(
+    if args.compatibility_mode {
+        patch_dwm(&SimplePatcher::new(
+            &build_aho_corasick()?,
+            args.gamma,
+            args.ignore_whitelist,
+        ))
+    } else {
+        hide_cmd();
+        run_in_tray(
             args.gamma,
             args.wait_time,
             args.skip_patching,
             args.ignore_whitelist,
-        );
+        )
     }
-
-    if args.dump_shaders {
-        return dump_shaders(&args.output_dir, args.big_shaders);
-    }
-
-    if args.restore {
-        return kill_dwm();
-    }
-
-    patch_dwm(&SimplePatcher::new(
-        &build_aho_corasick()?,
-        args.gamma,
-        args.ignore_whitelist,
-    ))
 }
 
 fn hide_cmd() {
@@ -100,6 +83,9 @@ fn hide_cmd() {
 }
 
 fn dump_shaders(path: &Path, only_big: bool) -> Result<()> {
+    debug!("Obtaining debugging privileges...");
+    obtain_debug_privileges()?;
+
     info!("Dumping shaders to `{}`...", path.to_string_lossy());
     let n = ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?.execute_shader_dump(path, only_big)?;
     info!("{} shaders were dumped", n);
@@ -113,6 +99,9 @@ fn kill_dwm() -> Result<()> {
 }
 
 fn patch_dwm(patcher: &SimplePatcher) -> Result<()> {
+    debug!("Obtaining debugging privileges...");
+    obtain_debug_privileges()?;
+
     match ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?.execute_patching(patcher)? {
         0 => Err(anyhow!("No shaders were patched!")),
         _ => Ok(()),

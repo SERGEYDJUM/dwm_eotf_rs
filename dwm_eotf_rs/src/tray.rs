@@ -109,12 +109,12 @@ pub fn run_in_tray(
                             current_mode = e;
                             update_tray(e, is_startup_registered, &icon_on);
 
-                            // Auto-update registry if startup is registered
+                            // Auto-update task if startup is registered
                             if is_startup_registered {
                                 if let Err(err) = startup::register_startup(g) {
-                                    error!("Failed to update startup registration: {}", err);
+                                    error!("Failed to update startup task: {}", err);
                                 } else {
-                                    debug!("Updated startup registration to gamma {:.3}", g);
+                                    debug!("Updated startup task to use gamma {:.3}", g);
                                 }
                             }
                         }
@@ -124,10 +124,7 @@ pub fn run_in_tray(
                 Event::ToggleStartup => {
                     if is_startup_registered {
                         match startup::unregister_startup() {
-                            Ok(_) => {
-                                is_startup_registered = false;
-                                info!("Removed from Windows startup");
-                            }
+                            Ok(_) => is_startup_registered = false,
                             Err(e) => error!("Failed to remove startup registration: {}", e),
                         }
                     } else {
@@ -138,10 +135,7 @@ pub fn run_in_tray(
                         };
 
                         match startup::register_startup(g) {
-                            Ok(_) => {
-                                is_startup_registered = true;
-                                info!("Registered for Windows startup with gamma {:.3}", g);
-                            }
+                            Ok(_) => is_startup_registered = true,
                             Err(err) => error!("Failed to register for startup: {}", err),
                         }
                     }
@@ -190,7 +184,7 @@ fn build_menu(e: Event, custom_gamma: Option<f32>, startup_registered: bool) -> 
         .checkable("Gamma 2.2", e == Event::SetGamma(2.2), Event::SetGamma(2.2))
         .checkable("Gamma 2.4", e == Event::SetGamma(2.4), Event::SetGamma(2.4))
         .separator()
-        .checkable("Run on startup", startup_registered, Event::ToggleStartup)
+        .checkable("Autostart", startup_registered, Event::ToggleStartup)
         .separator()
         .item("Exit", Event::Exit)
 }

@@ -17,31 +17,33 @@ pub struct Args {
     #[arg(short, long, default_value_t = 5)]
     pub wait_time: u64,
 
-    /// Patch every shader with matching patterns
+    /// Patch every shader that contains sRGB EOTF patterns
     #[arg(short, long)]
     pub ignore_whitelist: bool,
 
-    /// Restores original sRGB EOTF (by restarting DWM) and exits
-    #[arg(short, long)]
-    pub restore: bool,
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+}
 
-    /// Dumps DWM's original shaders as DXBC and exits
-    #[arg(long)]
-    pub dump_shaders: bool,
+#[derive(Debug, clap::Subcommand)]
+pub enum Commands {
+    /// Restores original sRGB EOTF (by restarting DWM)
+    Restore,
 
-    /// Prevents recursive dumping of sub-shaders
-    #[arg(long)]
-    pub big_shaders: bool,
+    /// Creates a task ('dwm_eotf_rs') that runs the app with default options on user logon
+    Schedule,
 
-    /// Target directory for dumped DXBC files
-    #[arg(long, default_value = "shaders/dumped")]
-    pub output_dir: std::path::PathBuf,
+    /// Removes the startup task ('dwm_eotf_rs') from Task Scheduler
+    Unschedule,
 
-    /// Registers the app to run on Windows startup and exits
-    #[arg(long)]
-    pub startup: bool,
+    /// Dumps DWM's original shaders as DXBC
+    Dump {
+        /// Prevents recursive dumping of sub-shaders
+        #[arg(short, long)]
+        big_shaders: bool,
 
-    /// Removes the app from Windows startup and exits
-    #[arg(long)]
-    pub no_startup: bool,
+        /// Target directory for dumped DXBC files
+        #[arg(short, long, default_value = "shaders/dumped")]
+        output_dir: std::path::PathBuf,
+    },
 }

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, anyhow};
 use std::process::{Command, Output};
-use tracing::warn;
+use tracing::{info, warn};
 
 /// Registers the app to run on Windows startup via Task Scheduler with highest
 /// privileges (admin elevation). Uses PowerShell `Register-ScheduledTask` for
@@ -21,6 +21,7 @@ pub fn register_startup(gamma: f32) -> Result<()> {
         return Err(anyhow!("Register-ScheduledTask failed: {}", stderr.trim()));
     }
 
+    info!("Scheduled task with gamma {:.3}", gamma);
     Ok(())
 }
 
@@ -39,6 +40,7 @@ pub fn unregister_startup() -> Result<()> {
         }
     }
 
+    info!("Removed task from scheduler");
     Ok(())
 }
 
