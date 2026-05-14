@@ -5,13 +5,17 @@ pub struct Args {
     #[arg(default_value_t = 2.2)]
     pub gamma: f32,
 
-    /// Patches DWM and exits (disables tray icon)
+    /// Patches DWM and exits (disables tray mode)
     #[arg(short, long)]
     pub compatibility_mode: bool,
 
-    /// Prevents automatic patching on app start (only if tray icon is enabled)
+    /// Prevents automatic patching on app start (tray mode)
     #[arg(short, long)]
     pub skip_patching: bool,
+
+    /// Delay (in seconds) before automatic patching on app start (tray mode)
+    #[arg(short, long, default_value_t = 5)]
+    pub wait_time: u64,
 
     /// Patch every shader with matching patterns
     #[arg(short, long)]
@@ -22,7 +26,7 @@ pub struct Args {
     pub restore: bool,
 
     /// Dumps DWM's original shaders as DXBC and exits
-    #[arg(short, long)]
+    #[arg(long)]
     pub dump_shaders: bool,
 
     /// Prevents recursive dumping of sub-shaders

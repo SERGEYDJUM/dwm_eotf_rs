@@ -1,6 +1,5 @@
 use anyhow::Result;
-use shader_patcher::winapi::obtain_debug_privileges;
-use std::{mem::MaybeUninit, sync::mpsc};
+use std::{mem::MaybeUninit, sync::mpsc, time::Duration};
 use tracing::{debug, error, info};
 use trayicon::*;
 use windows::Win32::UI::WindowsAndMessaging::{DispatchMessageA, GetMessageA, TranslateMessage};
@@ -24,10 +23,13 @@ enum Event {
     Exit,
 }
 
-pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> Result<()> {
+pub fn run_in_tray(
+    gamma: f32,
+    wait_time: u64,
+    skip_patching: bool,
+    ignore_whitelist: bool,
+) -> Result<()> {
     info!("Launching in Tray Mode...");
-
-    obtain_debug_privileges()?;
 
     let aho = build_aho_corasick()?;
 
@@ -67,13 +69,8 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
     // Spawn a deferred thread to send the initial patch event after DWM has time to start
     if !skip_patching {
         std::thread::spawn(move || {
-<<<<<<< HEAD
-            std::thread::sleep(std::time::Duration::from_secs(2));
-            tx_init.send(init_event).ok();
-=======
-            std::thread::sleep(std::time::Duration::from_secs(5));
+            std::thread::sleep(Duration::from_secs(wait_time));
             tx_init.send(Event::SetGamma(gamma)).ok();
->>>>>>> 5e745ec6aad350e46f14575e47942bb6020fceb3
         });
     }
 
@@ -96,11 +93,6 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
                 Event::SetSRGB => {
                     info!("Restoring DWM EOTF...");
 
-                    if let Err(err) = obtain_debug_privileges() {
-                        error!("Failed to obtain debug privileges: {}", err);
-                        return;
-                    }
-
                     match kill_dwm() {
                         Ok(_) => {
                             current_mode = e;
@@ -111,11 +103,6 @@ pub fn run_in_tray(gamma: f32, skip_patching: bool, ignore_whitelist: bool) -> R
                 }
                 Event::SetGamma(g) => {
                     info!("Patching DWM EOTF to use gamma {:.3}...", g);
-
-                    if let Err(err) = obtain_debug_privileges() {
-                        error!("Failed to obtain debug privileges: {}", err);
-                        return;
-                    }
 
                     match patch_dwm(&SimplePatcher::new(&aho, g, ignore_whitelist)) {
                         Ok(_) => {
