@@ -45,11 +45,14 @@ pub fn unregister_startup(all_users: bool) -> Result<()> {
         }
     }
 
-    if !all_users {
-        info!("Removed task from scheduler");
-    } else {
-        info!("Removed task(s) from scheduler");
-    }
+    info!(
+        "Removed {} from scheduler",
+        if !all_users {
+            "task"
+        } else {
+            "task(s)"
+        }
+    );
 
     Ok(())
 }
