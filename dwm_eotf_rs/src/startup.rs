@@ -27,8 +27,13 @@ pub fn register_startup(gamma: f32) -> Result<()> {
 
 /// Removes the app from Windows startup by deleting its scheduled task.
 /// Silently succeeds if the task does not exist.
-pub fn unregister_startup() -> Result<()> {
-    let script = include_str!("../scripts/unregister_task.ps1");
+pub fn unregister_startup(all_users: bool) -> Result<()> {
+    let script: &str;
+    if !all_users {
+        script = include_str!("../scripts/unregister_task.ps1");
+    } else {
+        script = include_str!("../scripts/unregister_all_tasks.ps1");
+    }
     let output = run_ps_script(script).context("Failed to run task removal script")?;
 
     // PowerShell with SilentlyContinue won't error if the task doesn't exist,
@@ -40,7 +45,12 @@ pub fn unregister_startup() -> Result<()> {
         }
     }
 
-    info!("Removed task from scheduler");
+    if !all_users {
+        info!("Removed task from scheduler");
+    } else {
+        info!("Removed task(s) from scheduler");
+    }
+
     Ok(())
 }
 

@@ -1,1 +1,2 @@
-Unregister-ScheduledTask -TaskName dwm_eotf_rs -Confirm:$false -ErrorAction SilentlyContinue
+$task_path = "\Users\" + $env:USERNAME + "\"
+Unregister-ScheduledTask -TaskName "dwm_eotf_rs" -TaskPath $task_path -Confirm:$false -ErrorAction SilentlyContinue

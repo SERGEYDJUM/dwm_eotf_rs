@@ -53,7 +53,8 @@ fn execute(args: &Args) -> Result<()> {
         return match cmd {
             Commands::Restore => kill_dwm(),
             Commands::Schedule => register_startup(args.gamma),
-            Commands::Unschedule => unregister_startup(),
+            Commands::Unschedule => unregister_startup(false),
+            Commands::UnscheduleAllUsers => unregister_startup(true),
             Commands::Dump {
                 big_shaders,
                 output_dir,

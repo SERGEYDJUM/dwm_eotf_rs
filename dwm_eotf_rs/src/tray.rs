@@ -123,7 +123,7 @@ pub fn run_in_tray(
                 }
                 Event::ToggleStartup => {
                     if is_startup_registered {
-                        match startup::unregister_startup() {
+                        match startup::unregister_startup(false) {
                             Ok(_) => is_startup_registered = false,
                             Err(e) => error!("Failed to remove startup registration: {}", e),
                         }
