@@ -14,11 +14,12 @@ Patches DWM's shaders to use proper EOTF (gamma)
 Usage: dwm_eotf_rs.exe [OPTIONS] [GAMMA] [COMMAND]
 
 Commands:
-  restore     Restores original sRGB EOTF (by restarting DWM)
-  schedule    Creates a task ('dwm_eotf_rs') that runs the app with default options on user logon
-  unschedule  Removes the startup task ('dwm_eotf_rs') from Task Scheduler
-  dump        Dumps DWM's original shaders as DXBC
-  help        Print this message or the help of the given subcommand(s)
+  restore         Restores original sRGB EOTF (by restarting DWM)
+  schedule        Creates a task ('dwm_eotf_rs') that runs the app with default options on user logon
+  unschedule      Removes the startup task ('dwm_eotf_rs') from Task Scheduler
+  unschedule-all  Removes the startup task ('dwm_eotf_rs') from Task Scheduler for all users
+  dump            Dumps DWM's original shaders as DXBC
+  help            Print this message or the help of the given subcommand(s)
 
 Arguments:
   [GAMMA]  Exponent to use during EOTF patching [default: 2.2]
