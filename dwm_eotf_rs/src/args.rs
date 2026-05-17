@@ -37,7 +37,7 @@ pub enum Commands {
     Unschedule,
 
     /// Removes the startup task ('dwm_eotf_rs') from Task Scheduler for all users
-    UnscheduleAllUsers,
+    UnscheduleAll,
 
     /// Dumps DWM's original shaders as DXBC
     Dump {
