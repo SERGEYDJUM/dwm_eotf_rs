@@ -5,6 +5,8 @@ It has additional features, such as system tray controls, autostart and shader d
 
 `dwm_eotf_rs` works by reading memory of the loaded `dwmcore.dll` module, patching shaders that are responsible for incorrect SDR to HDR conversions there and writing it back.
 
+**You do not need to revert the patch or restart DWM when playing HDR games or videos. It only affects DWM composed SDR content!**
+
 # Usage
 
 ## Help Output
