@@ -1,9 +1,9 @@
 use std::{fs, io::Write, path::Path};
 
 use bytemuck::{Pod, Zeroable, cast_slice, checked, from_bytes};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
-use crate::{BinaryPatcher, error::Result};
+use crate::{BinaryPatcher, error::{Error, Result}};
 
 unsafe extern "C" {
     unsafe fn CalculateDXBCChecksum(pData: *const u8, dwSize: u32, dwHash: &mut [u32; 4]) -> bool;
@@ -81,6 +81,10 @@ impl<'a> DXContainerViewMut<'a> {
 
     pub fn patch<T: BinaryPatcher>(&mut self, patcher: &T) -> Result<bool> {
         let checksum: u128 = self.get_stored_digest();
+
+        if self.calculate_digest() != checksum {
+            return Err(Error::CorruptedShader);
+        }
 
         if !patcher.patch(self.raw, checksum)? {
             debug!("Shader `{:032x}` not in whitelist, skipped", checksum);
@@ -170,6 +174,11 @@ pub fn dump_shaders(bytes: &[u8], only_big: bool, dir: &Path) -> Result<usize> {
             let header: &DXContainerHeader = from_bytes(&bytes[i..(i + header_size)]);
             let file_size = header.file_size as usize;
             let hash: u128 = *from_bytes(&header.digest.clone());
+            let actual_hash = calculate_checksum(&bytes[i..(i + header.file_size as usize)]);
+
+            if actual_hash != hash {
+                warn!("Shader with hash `{:032x}` was corrupted!", &hash);
+            }
 
             info!("Dumping shader with hash `{:032x}`", &hash);
             fs::File::create(dir.join(format!("{:032x}.dxbc", hash)))?

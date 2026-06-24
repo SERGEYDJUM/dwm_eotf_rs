@@ -20,8 +20,11 @@ pub enum Error {
     #[error(transparent)]
     FS(#[from] std::io::Error),
 
-    #[error("Replacements must mutch the size of original patterns")]
+    #[error("Replacements must be of the same size as original patterns")]
     ReplLenChange,
+
+    #[error("Shader's stored hash doesn't match calculated hash")]
+    CorruptedShader,
 
     #[error("Couldn't find `{0}` process")]
     ProcessNotFound(String),
