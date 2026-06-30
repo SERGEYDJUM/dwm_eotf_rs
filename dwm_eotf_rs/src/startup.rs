@@ -9,7 +9,7 @@ pub fn register_startup(args: &Args) -> Result<()> {
     let script = format!(
         include_str!("../scripts/register_task.ps1"),
         INPUT_app_path = std::env::current_exe()?.to_string_lossy(),
-        INPUT_app_args = format!("{:.3}", args.gamma)
+        INPUT_app_args = args.serialize_args()
     );
 
     let output = run_ps_script(&script)?;

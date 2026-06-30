@@ -30,7 +30,7 @@ pub enum Commands {
     /// Restores original sRGB EOTF (by restarting DWM)
     Restore,
 
-    /// Creates a task ('dwm_eotf_rs') that runs the app with default options on user logon
+    /// Creates a task ('dwm_eotf_rs') that runs the app on user logon
     Schedule,
 
     /// Removes the startup task ('dwm_eotf_rs') from Task Scheduler
@@ -49,4 +49,26 @@ pub enum Commands {
         #[arg(short, long, default_value = "shaders/dumped")]
         output_dir: std::path::PathBuf,
     },
+}
+
+impl Args {
+    pub fn serialize_args(&self) -> String {
+        let mut arguments = Vec::with_capacity(5);
+
+        if self.ignore_whitelist {
+            arguments.push("-i".to_string());
+        }
+
+        if self.skip_patching {
+            arguments.push("-s".to_string());
+        }
+
+        if self.compatibility_mode {
+            arguments.push("-c".to_string());
+        }
+
+        arguments.push(format!("-w {}", self.wait_time));
+        arguments.push(format!("{:.3}", self.gamma));
+        arguments.join(" ")
+    }
 }
