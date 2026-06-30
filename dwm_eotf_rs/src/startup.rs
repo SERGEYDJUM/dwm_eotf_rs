@@ -1,32 +1,31 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use std::process::{Command, Output};
-use tracing::{info, warn};
+use tracing::debug;
 
-/// Registers the app to run on Windows startup via Task Scheduler with highest
-/// privileges (admin elevation). Uses PowerShell `Register-ScheduledTask` for
-/// full control over task settings.
-pub fn register_startup(gamma: f32) -> Result<()> {
-    let exe_path = std::env::current_exe().context("Failed to get executable path")?;
+use crate::args::Args;
 
+/// Creates or overwrites the startup task in Task Scheduler.
+pub fn register_startup(args: &Args) -> Result<()> {
     let script = format!(
         include_str!("../scripts/register_task.ps1"),
-        INPUT_app_path = exe_path.to_string_lossy(),
-        INPUT_app_args = format!("{:.3}", gamma)
+        INPUT_app_path = std::env::current_exe()?.to_string_lossy(),
+        INPUT_app_args = format!("{:.3}", args.gamma)
     );
 
-    let output = run_ps_script(&script).context("Failed to run task registration script")?;
+    let output = run_ps_script(&script)?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!("Register-ScheduledTask failed: {}", stderr.trim()));
+        return Err(anyhow!(
+            "Failed to register the task:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
     }
 
-    info!("Scheduled task with gamma {:.3}", gamma);
     Ok(())
 }
 
-/// Removes the app from Windows startup by deleting its scheduled task.
-/// Silently succeeds if the task does not exist.
+/// Deletes the startup task from Task Scheduler.
+/// If `all_users` is false, a user-specific path will be used.
 pub fn unregister_startup(all_users: bool) -> Result<()> {
     let script = if !all_users {
         include_str!("../scripts/unregister_task.ps1")
@@ -34,32 +33,27 @@ pub fn unregister_startup(all_users: bool) -> Result<()> {
         include_str!("../scripts/unregister_all_tasks.ps1")
     };
 
-    let output = run_ps_script(script).context("Failed to run task removal script")?;
+    let output = run_ps_script(script)?;
 
-    // PowerShell with SilentlyContinue won't error if the task doesn't exist,
-    // but check anyway for unexpected failures
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if !stderr.is_empty() {
-            warn!("Unregister-ScheduledTask stderr: {}", stderr.trim());
-        }
+        return Err(anyhow!(
+            "Failed to unregister the task:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
     }
-
-    info!(
-        "Removed {} from scheduler",
-        if !all_users { "task" } else { "task(s)" }
-    );
 
     Ok(())
 }
 
-/// Checks whether the app is currently registered for Windows startup.
-pub fn is_registered() -> bool {
+/// Checks whether the user-specific startup task exists in Task Scheduler.
+pub fn is_registered() -> Result<bool> {
     let script = include_str!("../scripts/check_registration.ps1");
-    run_ps_script(script).is_ok_and(|o| o.status.success() && !o.stdout.is_empty())
+    Ok(run_ps_script(script)?.status.success())
 }
 
 fn run_ps_script(script: &str) -> std::io::Result<Output> {
+    debug!("Running PowerShell script:\n{}", script);
+
     Command::new("powershell")
         .args(["-nop", "-noni", "-c", script])
         .output()

@@ -3,7 +3,10 @@ use std::{fs, io::Write, path::Path};
 use bytemuck::{Pod, Zeroable, cast_slice, checked, from_bytes};
 use tracing::{debug, info, warn};
 
-use crate::{BinaryPatcher, error::{Error, Result}};
+use crate::{
+    BinaryPatcher,
+    error::{Error, Result},
+};
 
 unsafe extern "C" {
     unsafe fn CalculateDXBCChecksum(pData: *const u8, dwSize: u32, dwHash: &mut [u32; 4]) -> bool;

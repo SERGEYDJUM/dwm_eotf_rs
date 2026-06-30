@@ -69,9 +69,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.102"
+version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+checksum = "2a4385e2e34eb35d6b3efe798b9eb88096925d87726c0798709bf56d9ed84af3"
 
 [[package]]
 name = "async-broadcast"
@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "dwm_eotf_rs"
-version = "0.11.2"
+version = "0.12.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -1365,9 +1365,9 @@ dependencies = [
 
 [[package]]
 name = "trayicon"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8b4b2bb82da017c94c93d13dc8fbf694a7b73fdfc973441adccab63d221c522"
+checksum = "1e4323bcdb413ca07ff0a44aa79afe14e8fa0eee7655f1496347ed05a95385e8"
 dependencies = [
  "futures",
  "ico",

@@ -38,21 +38,19 @@ fn main() {
         )
         .init();
 
-    let args = Args::parse();
-
-    debug!("{:?}", args);
-
-    if let Err(err) = execute(&args) {
+    if let Err(err) = execute(Args::parse()) {
         error!("{}", err);
         exit(1);
     }
 }
 
-fn execute(args: &Args) -> Result<()> {
+fn execute(args: Args) -> Result<()> {
+    debug!("{:?}", args);
+
     if let Some(cmd) = &args.command {
         return match cmd {
             Commands::Restore => kill_dwm(),
-            Commands::Schedule => register_startup(args.gamma),
+            Commands::Schedule => register_startup(&args),
             Commands::Unschedule => unregister_startup(false),
             Commands::UnscheduleAll => unregister_startup(true),
             Commands::Dump {
@@ -63,6 +61,7 @@ fn execute(args: &Args) -> Result<()> {
     }
 
     if args.compatibility_mode {
+        info!("Patching DWM EOTF to use gamma {:.3}...", args.gamma);
         patch_dwm(&SimplePatcher::new(
             &build_aho_corasick()?,
             args.gamma,
@@ -70,12 +69,7 @@ fn execute(args: &Args) -> Result<()> {
         ))
     } else {
         hide_cmd();
-        run_in_tray(
-            args.gamma,
-            args.wait_time,
-            args.skip_patching,
-            args.ignore_whitelist,
-        )
+        run_in_tray(args)
     }
 }
 
