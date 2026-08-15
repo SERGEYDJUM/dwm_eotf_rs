@@ -71,7 +71,7 @@ pub fn run_in_tray(mut args: Args) -> Result<()> {
             };
         }
 
-        std::thread::sleep(Duration::from_secs(args.wait_time));
+        std::thread::sleep(Duration::from_secs_f32(args.wait_time));
 
         for e in rx.iter() {
             debug!("Processing event `{:?}`", e);
@@ -85,7 +85,12 @@ pub fn run_in_tray(mut args: Args) -> Result<()> {
                 }
                 Event::SetGamma(g) => {
                     info!("Patching DWM EOTF to use gamma {:.3}...", g);
-                    patch_dwm(&SimplePatcher::new(&aho, g, args.ignore_whitelist))?;
+                    patch_dwm(&SimplePatcher::new(
+                        &aho,
+                        g,
+                        args.brightness,
+                        args.ignore_whitelist,
+                    ))?;
                     (mode, args.gamma) = (e, g);
 
                     if registration {

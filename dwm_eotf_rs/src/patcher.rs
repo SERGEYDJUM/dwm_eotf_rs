@@ -25,17 +25,29 @@ pub struct SimplePatcher<'a> {
 }
 
 impl<'a> SimplePatcher<'a> {
-    pub fn new(aho: &'a AhoCorasick, mut gamma: f32, ignore_whitelist: bool) -> Self {
+    pub fn new(
+        aho: &'a AhoCorasick,
+        mut gamma: f32,
+        mut brightness: f32,
+        ignore_whitelist: bool,
+    ) -> Self {
         if gamma <= 0.0 {
             warn!("Gamma must be positive, defaulting to 2.2!");
             gamma = 2.2;
         }
 
+        if brightness <= 0.0 {
+            warn!("Brightness must be positive, defaulting to 1.0!");
+            brightness = 1.0;
+        }
+
+        let scale = brightness.powf(0.5 / gamma);
+
         let replacements: [[u8; 16]; 4] = cast([
             [gamma, gamma, gamma, 0.0],
             [0.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0, 0.0],
-            [1.0, 1.0, 1.0, 0.0],
+            [scale, scale, scale, 0.0],
         ]);
 
         Self {

@@ -65,6 +65,7 @@ fn execute(args: Args) -> Result<()> {
         patch_dwm(&SimplePatcher::new(
             &build_aho_corasick()?,
             args.gamma,
+            args.brightness,
             args.ignore_whitelist,
         ))
     } else {

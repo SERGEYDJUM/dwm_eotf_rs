@@ -1,7 +1,7 @@
 [package]
 name = "shader_patcher"
 authors = ["Sergey Dzhumageldiev"]
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
@@ -11,7 +11,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 windows = { workspace = true, features = ["Win32_System_Memory"] }
-winsafe = { version = "0.0.27", features = ["advapi"] }
+winsafe = { version = "0.0.28", features = ["advapi"] }
 
 [build-dependencies]
-cc = "1.2.65"
+cc = "1.4.3"

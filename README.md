@@ -28,12 +28,13 @@ Arguments:
   [GAMMA]  Exponent to use during EOTF patching [default: 2.2]
 
 Options:
-  -c, --compatibility-mode     Patches DWM and exits (disables tray mode)
-  -s, --skip-patching          Prevents automatic patching on app start (tray mode)
-  -w, --wait-time <WAIT_TIME>  Delay (in seconds) before automatic patching on app start (tray mode) [default: 5]
-  -i, --ignore-whitelist       Patch every shader that contains sRGB EOTF patterns
-  -h, --help                   Print help
-  -V, --version                Print version
+  -c, --compatibility-mode       Patches DWM and exits (disables tray mode)
+  -s, --skip-patching            Prevents automatic patching on app start (tray mode)
+  -w, --wait-time <WAIT_TIME>    Delay (in seconds) before automatic patching on app start (tray mode) [default: 5]
+  -i, --ignore-whitelist         Patch every shader that contains sRGB EOTF patterns
+      --brightness <BRIGHTNESS>  Brightness multiplier (factor for nits) [default: 1]
+  -h, --help                     Print help
+  -V, --version                  Print version
 ```
 
 ## Tray Mode

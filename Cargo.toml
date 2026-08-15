@@ -3,9 +3,9 @@ resolver = "3"
 members = ["shader_patcher", "dwm_eotf_rs"]
 
 [workspace.dependencies]
-bytemuck = "1.25.0"
+bytemuck = "1.25.2"
 tracing = "0.1.44"
-thiserror = "2.0.18"
+thiserror = "2.0.20"
 windows = "0.62.2"
 
 [profile.release]

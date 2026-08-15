@@ -1,8 +1,12 @@
+const DEFAULT_GAMMA: f32 = 2.2;
+const DEFAULT_BRIGHTNESS: f32 = 1.0;
+const DEFAULT_WAIT_TIME: f32 = 5.0;
+
 #[derive(Debug, clap::Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {
     /// Exponent to use during EOTF patching
-    #[arg(default_value_t = 2.2)]
+    #[arg(default_value_t = DEFAULT_GAMMA)]
     pub gamma: f32,
 
     /// Patches DWM and exits (disables tray mode)
@@ -14,12 +18,16 @@ pub struct Args {
     pub skip_patching: bool,
 
     /// Delay (in seconds) before automatic patching on app start (tray mode)
-    #[arg(short, long, default_value_t = 5)]
-    pub wait_time: u64,
+    #[arg(short, long, default_value_t = DEFAULT_WAIT_TIME)]
+    pub wait_time: f32,
 
     /// Patch every shader that contains sRGB EOTF patterns
     #[arg(short, long)]
     pub ignore_whitelist: bool,
+
+    /// Brightness multiplier (factor for nits)
+    #[arg(long, default_value_t = DEFAULT_BRIGHTNESS)]
+    pub brightness: f32,
 
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -67,8 +75,18 @@ impl Args {
             arguments.push("-c".to_string());
         }
 
-        arguments.push(format!("-w {}", self.wait_time));
-        arguments.push(format!("{:.3}", self.gamma));
+        if self.wait_time != DEFAULT_WAIT_TIME {
+            arguments.push(format!("-w {}", self.wait_time));
+        }
+
+        if self.brightness != DEFAULT_BRIGHTNESS {
+            arguments.push(format!("--brightness {}", self.wait_time));
+        }
+
+        if self.gamma != DEFAULT_GAMMA {
+            arguments.push(format!("{:.3}", self.gamma));
+        }
+
         arguments.join(" ")
     }
 }

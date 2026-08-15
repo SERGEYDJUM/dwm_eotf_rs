@@ -12,7 +12,7 @@ unsafe extern "C" {
     unsafe fn CalculateDXBCChecksum(pData: *const u8, dwSize: u32, dwHash: &mut [u32; 4]) -> bool;
 }
 
-pub const DXBC_MAGIC: [u8; 4] = [b'D', b'X', b'B', b'C'];
+pub const DXBC_MAGIC: [u8; 4] = *b"DXBC";
 pub const DX_HEADER_SIZE: usize = size_of::<DXContainerHeader>();
 
 #[repr(C)]
