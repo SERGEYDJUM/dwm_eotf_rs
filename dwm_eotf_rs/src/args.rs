@@ -76,17 +76,14 @@ impl Args {
         }
 
         if self.wait_time != DEFAULT_WAIT_TIME {
-            arguments.push(format!("-w {}", self.wait_time));
+            arguments.push(format!("-w {:.1}", self.wait_time));
         }
 
         if self.brightness != DEFAULT_BRIGHTNESS {
-            arguments.push(format!("--brightness {}", self.wait_time));
+            arguments.push(format!("--brightness {:.3}", self.brightness));
         }
 
-        if self.gamma != DEFAULT_GAMMA {
-            arguments.push(format!("{:.3}", self.gamma));
-        }
-
+        arguments.push(format!("{:.3}", self.gamma));
         arguments.join(" ")
     }
 }
