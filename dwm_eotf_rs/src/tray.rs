@@ -28,9 +28,12 @@ enum Event {
 pub fn run_in_tray(mut args: Args) -> Result<()> {
     info!("Launching in Tray Mode...");
 
-    if args.disable_mpo {
-        info!("Disabling MPO (Multi-Plane Overlay)...");
-        registry::set_mpo_state(false)?;
+    if let Some(mpo) = args.mpo_state {
+        info!(
+            "{} Multi-Plane Overlay (MPO)...",
+            if mpo { "Enabling" } else { "Disabling" }
+        );
+        registry::set_mpo_state(mpo)?;
     }
 
     let initial_mpo = registry::is_mpo_enabled()?;
@@ -97,15 +100,17 @@ pub fn run_in_tray(mut args: Args) -> Result<()> {
                     update_tray!();
                 }
                 Event::SetGamma(g) => {
+                    let brightness = args.effective_brightness()?;
                     info!(
-                        "Patching DWM EOTF to use gamma {:.3} and brightness {:.3}...",
-                        g, args.brightness
+                        "Patching DWM EOTF to use gamma {:.3} and brightness factor {:.3}...",
+                        g, brightness
                     );
                     patch_dwm(&SimplePatcher::new(
                         &aho,
                         g,
-                        args.brightness,
+                        brightness,
                         args.ignore_whitelist,
+                        args.no_alpha_fix,
                     ))?;
                     (mode, args.gamma) = (e, g);
 
@@ -137,8 +142,9 @@ pub fn run_in_tray(mut args: Args) -> Result<()> {
                         patch_dwm(&SimplePatcher::new(
                             &aho,
                             g,
-                            args.brightness,
+                            args.effective_brightness()?,
                             args.ignore_whitelist,
+                            args.no_alpha_fix,
                         ))?;
                     } else {
                         kill_dwm()?;
