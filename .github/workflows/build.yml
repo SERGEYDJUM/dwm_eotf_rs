@@ -1,9 +1,11 @@
 name: Upload Binary
 
 on:
-  push:
-    tags:
-      - v[0-9]+.*
+  workflow_dispatch:
+    inputs:
+      tag: 
+        required: true
+        type: string
 
 jobs:
   build:
@@ -15,5 +17,5 @@ jobs:
       - run: cargo build --release
       - uses: actions/upload-artifact@v7
         with:
-          name: ${{ github.ref_name }}
+          name: ${{ inputs.tag }} 
           path: ./target/release/dwm_eotf_rs.exe
