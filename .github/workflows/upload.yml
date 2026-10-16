@@ -1,4 +1,4 @@
-name: Upload Binary
+name: Build & Upload Binary
 
 on:
   push:
