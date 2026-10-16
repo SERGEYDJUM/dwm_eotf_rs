@@ -14,3 +14,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release
       - run: gh release upload ${{ github.ref_name }} ./target/release/dwm_eotf_rs.exe
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
