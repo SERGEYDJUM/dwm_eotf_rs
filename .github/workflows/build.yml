@@ -1,0 +1,19 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v[0-9]+.*
+
+jobs:
+  build:
+    name: Build & Upload
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: $tag
+          path: ./target/release/dwm_eotf_rs.exe
