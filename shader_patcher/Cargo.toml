@@ -1,7 +1,7 @@
 [package]
 name = "shader_patcher"
 authors = ["Sergey Dzhumageldiev"]
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
@@ -14,4 +14,4 @@ windows = { workspace = true, features = ["Win32_System_Memory"] }
 winsafe = { version = "0.0.29", features = ["advapi"] }
 
 [build-dependencies]
-cc = "1.6.0"
+cc = "1.8.0"

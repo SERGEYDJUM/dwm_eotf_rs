@@ -2,7 +2,7 @@
 name = "dwm_eotf_rs"
 authors = ["Sergey Dzhumageldiev"]
 description = "Patches DWM's shaders to use proper EOTF (gamma)"
-version = "0.17.0"
+version = "0.17.2"
 edition = "2024"
 build = "build.rs"
 license = "MIT"
@@ -22,4 +22,4 @@ trayicon = "0.4.1"
 windows-registry = "0.100.0"
 
 [build-dependencies]
-winresource = "0.1.31"
+winresource = "0.1.34"

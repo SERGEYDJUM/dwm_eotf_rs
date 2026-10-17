@@ -55,7 +55,7 @@ When supplied with the `-c` flag, `dwm_eotf_rs` works like a simple console app 
 
 ## Startup
 
-The app can register itself to run automatically when user logs in, using the Windows Task Scheduler (task named `dwm_eotf_rs`).
+The app can register itself to run automatically when user logs in, using the Windows Task Scheduler (task `\<PC_NAME>\<USER_NAME>\dwm_eotf_rs`).
 
 The `-c schedule` argument combination schedules `dwm_eotf_rs` to autostart in Compatibility Mode. **This is the intended way to use the app.**
 
