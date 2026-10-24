@@ -2,7 +2,7 @@ use aho_corasick::{AhoCorasick, MatchKind};
 use anyhow::Result;
 use bytemuck::{cast, cast_slice};
 use shader_patcher::{BinaryPatcher, error::Error};
-use tracing::warn;
+use tracing::{debug, warn};
 
 //TODO?
 //RGB_FULL_G22_NONE_P2020_To_scRGB
@@ -109,6 +109,8 @@ impl<'a> SimplePatcher<'a> {
         if !no_alpha_fix && (brightness > 1.0) {
             b1 /= 2.0 * brightness - 1.0;
             c1 /= brightness;
+
+            debug!("AlphaCorrectSDR/BoostSDRLuminance patches enabled");
         }
 
         #[allow(clippy::excessive_precision)]

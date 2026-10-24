@@ -141,7 +141,7 @@ impl ShaderPatcher {
     pub fn patch_shaders<T: BinaryPatcher>(&mut self, patcher: &T) -> Result<usize> {
         debug!("Patching shaders recursively...");
         let (found, patched) = patch_recursive(&mut self.memory, patcher, true)?;
-        info!("{} out of {} shaders were patched", patched, found);
+        debug!("{} out of {} shaders were patched", patched, found);
         Ok(patched)
     }
 

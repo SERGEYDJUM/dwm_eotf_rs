@@ -1,7 +1,3 @@
-use crate::registry;
-use anyhow::Result;
-use tracing::debug;
-
 const DEFAULT_GAMMA: f32 = 2.2;
 const DEFAULT_WAIT_TIME: f32 = 5.0;
 
@@ -76,22 +72,6 @@ pub enum Commands {
 }
 
 impl Args {
-    pub fn effective_brightness(&self) -> Result<f32> {
-        if let Some(target_nits) = self.nits
-            && let Some(reported_nits) = registry::get_primary_sdr_white_level()?
-        {
-            let factor = target_nits / reported_nits;
-            debug!(
-                "Reported SDR paper white level is {:.1} nits, using {:.3}x brightness factor",
-                reported_nits, factor
-            );
-            return Ok(factor);
-        }
-
-        // dwm_eotf compatible multiplier
-        Ok(self.brightness.unwrap_or(1.0).sqrt())
-    }
-
     pub fn serialize_args(&self) -> String {
         let mut arguments = Vec::with_capacity(6);
 

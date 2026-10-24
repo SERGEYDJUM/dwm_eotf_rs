@@ -1,7 +1,7 @@
 use std::{fs, io::Write, path::Path};
 
 use bytemuck::{Pod, Zeroable, cast_slice, checked, from_bytes};
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 use crate::{
     BinaryPatcher,
@@ -90,12 +90,12 @@ impl<'a> DXContainerViewMut<'a> {
         }
 
         if !patcher.patch(self.raw, checksum)? {
-            debug!("Shader `{:032x}` not in whitelist, skipped", checksum);
+            trace!("Shader `{:032x}` not in whitelist, skipped", checksum);
             return Ok(false);
         }
 
         if let Some(old_hash) = self.fix_checksum() {
-            info!("Patched shader `{:032x}`", old_hash);
+            debug!("Patched shader `{:032x}`", old_hash);
             Ok(true)
         } else {
             Ok(false)

@@ -3,6 +3,7 @@ mod patcher;
 mod registry;
 mod startup;
 mod tray;
+mod winapi;
 
 use std::{path::Path, process::exit};
 
@@ -75,7 +76,7 @@ fn execute(args: Args) -> Result<()> {
             set_mpo_state(mpo)?;
         }
 
-        let brightness = args.effective_brightness()?;
+        let brightness = get_brightness_factor(args.nits, args.brightness)?;
 
         info!(
             "Patching DWM EOTF to use gamma {:.3} and brightness factor {:.3}...",
@@ -116,11 +117,30 @@ fn kill_dwm() -> Result<()> {
 }
 
 fn patch_dwm(patcher: &SimplePatcher) -> Result<()> {
-    debug!("Obtaining/renewing debugging privileges...");
+    info!("Obtaining/renewing debugging privileges...");
     obtain_debug_privileges()?;
 
     match ShaderPatcher::open_restarted(DWM_EXE, DWM_DLL)?.execute_patching(patcher)? {
         0 => Err(anyhow!("No shaders were patched!")),
-        _ => Ok(()),
+        n => {
+            info!("DWM patched, {} shaders affected", n);
+            Ok(())
+        }
     }
+}
+
+fn get_brightness_factor(target_nits: Option<f32>, fallback: Option<f32>) -> Result<f32> {
+    if let Some(target_nits) = target_nits
+        && let Some(reported_nits) = winapi::get_sdr_white_level()?
+    {
+        let factor = target_nits / reported_nits;
+        info!(
+            "Assuming SDR white level is {:.1} nits, brightness factor is {:.3}",
+            reported_nits, factor
+        );
+        return Ok(factor);
+    }
+
+    // dwm_eotf compatible multiplier
+    Ok(fallback.unwrap_or(1.0).sqrt())
 }

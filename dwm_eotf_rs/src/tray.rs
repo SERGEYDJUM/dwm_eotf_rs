@@ -6,7 +6,7 @@ use windows::Win32::UI::WindowsAndMessaging::{DispatchMessageA, GetMessageA, Tra
 
 use crate::{
     args::Args,
-    kill_dwm, patch_dwm,
+    get_brightness_factor, kill_dwm, patch_dwm,
     patcher::{SimplePatcher, build_aho_corasick},
     registry, startup,
 };
@@ -100,7 +100,7 @@ pub fn run_in_tray(mut args: Args) -> Result<()> {
                     update_tray!();
                 }
                 Event::SetGamma(g) => {
-                    let brightness = args.effective_brightness()?;
+                    let brightness = get_brightness_factor(args.nits, args.brightness)?;
                     info!(
                         "Patching DWM EOTF to use gamma {:.3} and brightness factor {:.3}...",
                         g, brightness
@@ -142,7 +142,7 @@ pub fn run_in_tray(mut args: Args) -> Result<()> {
                         patch_dwm(&SimplePatcher::new(
                             &aho,
                             g,
-                            args.effective_brightness()?,
+                            get_brightness_factor(args.nits, args.brightness)?,
                             args.ignore_whitelist,
                             args.no_alpha_fix,
                         ))?;
