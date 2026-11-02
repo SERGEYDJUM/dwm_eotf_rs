@@ -1,18 +1,24 @@
+mod missing;
+
 use anyhow::{Result, anyhow};
 use tracing::info;
 use windows::Win32::{
     Devices::Display::{
-        DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
         DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL, DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
-        DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO,
-        DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO, DISPLAYCONFIG_SDR_WHITE_LEVEL,
-        DISPLAYCONFIG_TARGET_DEVICE_NAME, DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes,
-        QDC_ONLY_ACTIVE_PATHS, QueryDisplayConfig,
+        DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO,
+        DISPLAYCONFIG_SDR_WHITE_LEVEL, DISPLAYCONFIG_TARGET_DEVICE_NAME,
+        DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QDC_ONLY_ACTIVE_PATHS,
+        QueryDisplayConfig,
     },
     Foundation::ERROR_SUCCESS,
 };
 
-fn get_active_displays_paths() -> Result<Vec<DISPLAYCONFIG_PATH_INFO>> {
+use crate::winapi::missing::{
+    DISPLAYCONFIG_ADVANCED_COLOR_MODE, DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2,
+    DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2,
+};
+
+fn get_active_display_paths() -> Result<Vec<DISPLAYCONFIG_PATH_INFO>> {
     let flags = QDC_ONLY_ACTIVE_PATHS;
     let (mut paths_len, mut modes_len) = (0, 0);
 
@@ -20,7 +26,7 @@ fn get_active_displays_paths() -> Result<Vec<DISPLAYCONFIG_PATH_INFO>> {
         && status != ERROR_SUCCESS
     {
         return Err(anyhow!(
-            "GetDisplayConfigBufferSizes failed with code {:x}",
+            "GetDisplayConfigBufferSizes failed with code {:0x}",
             status.0
         ));
     }
@@ -40,7 +46,7 @@ fn get_active_displays_paths() -> Result<Vec<DISPLAYCONFIG_PATH_INFO>> {
     } && status != ERROR_SUCCESS
     {
         return Err(anyhow!(
-            "QueryDisplayConfig failed with code {:x}",
+            "QueryDisplayConfig failed with code {:0x}",
             status.0
         ));
     }
@@ -49,11 +55,13 @@ fn get_active_displays_paths() -> Result<Vec<DISPLAYCONFIG_PATH_INFO>> {
     Ok(paths)
 }
 
-fn is_display_path_sdr(path: &DISPLAYCONFIG_PATH_INFO) -> Result<bool> {
-    let mut packet = DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO {
+fn get_display_path_acm(
+    path: &DISPLAYCONFIG_PATH_INFO,
+) -> Result<DISPLAYCONFIG_ADVANCED_COLOR_MODE> {
+    let mut packet = DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 {
         header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
-            r#type: DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
-            size: size_of::<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>() as u32,
+            r#type: DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2,
+            size: size_of::<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2>() as u32,
             adapterId: path.targetInfo.adapterId,
             id: path.targetInfo.id,
         },
@@ -64,13 +72,12 @@ fn is_display_path_sdr(path: &DISPLAYCONFIG_PATH_INFO) -> Result<bool> {
         && status != 0
     {
         return Err(anyhow!(
-            "DisplayConfigGetDeviceInfo(GET_ADVANCED_COLOR_INFO) failed with code {:x}",
+            "DisplayConfigGetDeviceInfo(GET_ADVANCED_COLOR_INFO_2) failed with code {:0x}",
             status
         ));
     }
 
-    // TODO: somehow include WCG displays
-    Ok(packet.bitsPerColorChannel == 8)
+    Ok(packet.activeColorMode)
 }
 
 fn get_display_path_name(path: &DISPLAYCONFIG_PATH_INFO) -> Result<String> {
@@ -88,7 +95,7 @@ fn get_display_path_name(path: &DISPLAYCONFIG_PATH_INFO) -> Result<String> {
         && status != 0
     {
         return Err(anyhow!(
-            "DisplayConfigGetDeviceInfo(TARGET_DEVICE_NAME) failed with code {:x}",
+            "DisplayConfigGetDeviceInfo(TARGET_DEVICE_NAME) failed with code {:0x}",
             status
         ));
     }
@@ -99,8 +106,8 @@ fn get_display_path_name(path: &DISPLAYCONFIG_PATH_INFO) -> Result<String> {
 pub fn get_sdr_white_level() -> Result<Option<f32>> {
     let mut white_level = 0;
 
-    for path in get_active_displays_paths()? {
-        if is_display_path_sdr(&path)? {
+    for path in get_active_display_paths()? {
+        if get_display_path_acm(&path)? != DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr {
             continue;
         }
 
@@ -118,13 +125,13 @@ pub fn get_sdr_white_level() -> Result<Option<f32>> {
             && status != 0
         {
             return Err(anyhow!(
-                "DisplayConfigGetDeviceInfo(SDR_WHITE_LEVEL) failed with code {:x}",
+                "DisplayConfigGetDeviceInfo(SDR_WHITE_LEVEL) failed with code {:0x}",
                 status
             ));
         }
 
         info!(
-            "Found display `{}` with SDRWhiteLevel = {} nits ",
+            "Found HDR display `{}` with white level at {} nits",
             get_display_path_name(&path)?,
             packet.SDRWhiteLevel as f32 * 0.08
         );
@@ -138,4 +145,13 @@ pub fn get_sdr_white_level() -> Result<Option<f32>> {
 
     // SDRWhiteLevel is stored in units of 1/1000 of 80 nits
     Ok(Some((white_level as f32) * 0.08))
+}
+
+pub fn is_hdr_active() -> Result<bool> {
+    for path in get_active_display_paths()? {
+        if get_display_path_acm(&path)? == DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
