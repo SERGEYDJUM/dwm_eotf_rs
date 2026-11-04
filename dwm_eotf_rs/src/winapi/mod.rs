@@ -1,14 +1,15 @@
 mod missing;
 
 use anyhow::{Result, anyhow};
-use tracing::info;
+use tracing::{info, warn};
 use windows::Win32::{
     Devices::Display::{
+        DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
         DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL, DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
-        DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO,
-        DISPLAYCONFIG_SDR_WHITE_LEVEL, DISPLAYCONFIG_TARGET_DEVICE_NAME,
-        DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QDC_ONLY_ACTIVE_PATHS,
-        QueryDisplayConfig,
+        DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO,
+        DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO, DISPLAYCONFIG_SDR_WHITE_LEVEL,
+        DISPLAYCONFIG_TARGET_DEVICE_NAME, DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes,
+        QDC_ONLY_ACTIVE_PATHS, QueryDisplayConfig,
     },
     Foundation::ERROR_SUCCESS,
 };
@@ -103,11 +104,56 @@ fn get_display_path_name(path: &DISPLAYCONFIG_PATH_INFO) -> Result<String> {
     Ok(String::from_utf16_lossy(&packet.monitorFriendlyDeviceName))
 }
 
+fn is_display_path_hdr_fb(path: &DISPLAYCONFIG_PATH_INFO) -> Result<bool> {
+    let mut packet = DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO {
+        header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+            r#type: DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO,
+            size: size_of::<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>() as u32,
+            adapterId: path.targetInfo.adapterId,
+            id: path.targetInfo.id,
+        },
+        ..Default::default()
+    };
+
+    if let status = unsafe { DisplayConfigGetDeviceInfo(&mut packet.header) }
+        && status != 0
+    {
+        return Err(anyhow!(
+            "DisplayConfigGetDeviceInfo(GET_ADVANCED_COLOR_INFO) failed with code {:0x}",
+            status
+        ));
+    }
+
+    let flags = unsafe { packet.Anonymous.value };
+    let advanced_color_enabled = flags & 2 != 0;
+    let wide_color_enforced = flags & 4 != 0;
+    Ok(advanced_color_enabled && !wide_color_enforced)
+}
+
+pub fn is_hdr_active() -> Result<bool> {
+    for path in get_active_display_paths()? {
+        match get_display_path_acm(&path) {
+            Ok(m) => {
+                if m == DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr {
+                    return Ok(true);
+                }
+            }
+            Err(e) => {
+                warn!("{}", e);
+                if is_display_path_hdr_fb(&path)? {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+
 pub fn get_sdr_white_level() -> Result<Option<f32>> {
     let mut white_level = 0;
 
     for path in get_active_display_paths()? {
-        if get_display_path_acm(&path)? != DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr {
+        if !is_hdr_active()? {
             continue;
         }
 
@@ -145,13 +191,4 @@ pub fn get_sdr_white_level() -> Result<Option<f32>> {
 
     // SDRWhiteLevel is stored in units of 1/1000 of 80 nits
     Ok(Some((white_level as f32) * 0.08))
-}
-
-pub fn is_hdr_active() -> Result<bool> {
-    for path in get_active_display_paths()? {
-        if get_display_path_acm(&path)? == DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
