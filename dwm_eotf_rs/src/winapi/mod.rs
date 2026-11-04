@@ -130,20 +130,20 @@ fn is_display_path_hdr_fb(path: &DISPLAYCONFIG_PATH_INFO) -> Result<bool> {
     Ok(advanced_color_enabled && !wide_color_enforced)
 }
 
+pub fn is_display_path_hdr(path: &DISPLAYCONFIG_PATH_INFO) -> Result<bool> {
+    match get_display_path_acm(&path) {
+        Ok(m) => Ok(m == DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr),
+        Err(e) => {
+            warn!("{}", e);
+            is_display_path_hdr_fb(&path)
+        }
+    }
+}
+
 pub fn is_hdr_active() -> Result<bool> {
     for path in get_active_display_paths()? {
-        match get_display_path_acm(&path) {
-            Ok(m) => {
-                if m == DISPLAYCONFIG_ADVANCED_COLOR_MODE::Hdr {
-                    return Ok(true);
-                }
-            }
-            Err(e) => {
-                warn!("{}", e);
-                if is_display_path_hdr_fb(&path)? {
-                    return Ok(true);
-                }
-            }
+        if is_display_path_hdr(&path)? {
+            return Ok(true);
         }
     }
     Ok(false)
@@ -153,7 +153,7 @@ pub fn get_sdr_white_level() -> Result<Option<f32>> {
     let mut white_level = 0;
 
     for path in get_active_display_paths()? {
-        if !is_hdr_active()? {
+        if !is_display_path_hdr(&path)? {
             continue;
         }
 
